@@ -23,7 +23,12 @@
 ;;; Code:
 
 ;; customization
- 
+
+(defcustom journalctl-chunk-size
+  1000
+  "Number of lines of journalctl output that are loaded in the buffer. You can navigate "
+  :group 'journalctl)
+  
 (defcustom journalctl-error-keywords
   '("Failed" "failed" "Error" "error" "critical" "couldn't" "Can't" "not" "Not" "unreachable")
   "Keywords that mark errors in journalctl output"
@@ -82,6 +87,14 @@
         :group 'journalctl)
 
 ;; variables
+(defvar journalctl-current-chunk
+  0
+  "Counter for chunks of journalctl output loaded into the *journalctl*-buffer. ")
+
+(defvar journalctl-current-params
+  ""
+  "Keeps the parametes of  the last call of journalctl.")
+
 (defvar journalctl-disk-usage
   (concat
    "Disk-usage: "
@@ -98,19 +111,40 @@
   "Helm query for  boot-logs available to journalctl.")
 ;; functions
 
-(defun journalctl (&optional flags)
+(defun journalctl (&optional flags chunk)
   "Run journalctl with give FLAGS and present output in a special buffer."
   (interactive)
-  (let ((param (or flags (read-string "parameter: " nil nil "-xe "))))
+  (let* ((param (or flags (read-string "parameter: " nil nil "-xe ")))
+	 (this-chunk (or chunk  0)) ;; if chunk is not explicit given, we assume this first (0) chunk
+	 (lines (string-to-number (shell-command-to-string (concat "journalctl " param "|  wc -l"))))
+	 (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
+	 (last-line (if (<= (+ first-line journalctl-chunk-size) lines)
+			(+ first-line journalctl-chunk-size)
+		      lines)))
     (with-current-buffer (get-buffer-create "*journalctl*")
       (setq buffer-read-only nil)
       (fundamental-mode)
       (erase-buffer))
-    (shell-command  (concat "journalctl " param) "*journalctl*" "*journalctl-error*"))
+    (shell-command  (concat "journalctl " param " | sed -ne '"  (int-to-string first-line) "," (int-to-string last-line) "p'") "*journalctl*" "*journalctl-error*")
   (switch-to-buffer "*journalctl*")
   (setq buffer-read-only t)
-  (journalctl-mode))
+  (setq journalctl-current-params param)
+  (journalctl-mode)))
 
+(defun journalctl-next-chunk ()
+  "Load the next chunk of journalctl output to the buffer."
+  (interactive)
+  (let ((c 0)
+	(chunk (+ journalctl-current-chunk 1))
+	(lines (string-to-number
+		(shell-command-to-string (concat "journalctl " journalctl-current-params "|  wc -l")))))
+	(while (and
+		(< c chunk)
+		(< (*  c  journalctl-chunk-size) lines))
+	  (setq c (+ c 1)))
+	(setq journalctl-current-chunk c)
+	(journalctl journalctl-current-params  c)))
+	  
 (defun journalctl-boot (&optional boot)
   "Select and show boot-log.
 
