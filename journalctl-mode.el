@@ -134,17 +134,22 @@
 (defun journalctl-next-chunk ()
   "Load the next chunk of journalctl output to the buffer."
   (interactive)
-  (let ((c 0)
-	(chunk (+ journalctl-current-chunk 1))
-	(lines (string-to-number
-		(shell-command-to-string (concat "journalctl " journalctl-current-params "|  wc -l")))))
-	(while (and
-		(< c chunk)
-		(< (*  c  journalctl-chunk-size) lines))
-	  (setq c (+ c 1)))
-	(setq journalctl-current-chunk c)
-	(journalctl journalctl-current-params  c)))
-	  
+  (let* ((lines (string-to-number
+		(shell-command-to-string (concat "journalctl " journalctl-current-params "|  wc -l"))))
+	(chunk (if  (> (* (+ 2 journalctl-current-chunk) journalctl-chunk-size) lines)
+		 journalctl-current-chunk
+		 (+ journalctl-current-chunk 1) )))
+	(setq journalctl-current-chunk chunk)
+	(journalctl journalctl-current-params  chunk)))
+
+(defun journalctl-previous-chunk ()
+  "Load the previous chunk of journalctl output to the buffer."
+  (interactive)
+  (let ((chunk (if (>= journalctl-current-chunk 1) (- journalctl-current-chunk 1) 0)))
+	(setq journalctl-current-chunk chunk)
+	(journalctl journalctl-current-params  chunk)))
+
+
 (defun journalctl-boot (&optional boot)
   "Select and show boot-log.
 
@@ -175,13 +180,25 @@ If BOOT is provided it is the number of the boot-log to be shown."
           ;; note: order above matters, because once colored, that part won't change.
           ;; in general, put longer words first
           )))
+
+;; keymap
+(defvar journalctl-mode-map
+  (let ((map (make-keymap "journalctl")))
+    (define-key map (kbd "n") 'journalctl-next-chunk)
+    (define-key map (kbd "p") 'journalctl-previous-chunk)
+    map)
+  "Keymap for journalctl mode.")
+
 ;;;###autoload
 (define-derived-mode journalctl-mode c-mode "journalctl mode"
   "Major mode for viewing journalctl output"
+  (setq major-mode 'journalctl-mode)
   (setq mode-name "journalctl")
   (setq mode-line-process journalctl-disk-usage)
   ;; code for syntax highlighting
-  (setq font-lock-defaults '((journalctl-font-lock-keywords))))
+  (setq font-lock-defaults '((journalctl-font-lock-keywords)))
+    ;; Keymap 
+  (use-local-map journalctl-mode-map))
 
 ;; add the mode to the `features' list
 (provide 'journalctl-mode)
