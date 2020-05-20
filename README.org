@@ -30,7 +30,7 @@ Helm is needed for the journalctl-boot function.
 
 At the moment there are to functions provided to call journalctl: 
 
--   journalctl: will ask for commandline parameters like "-xe" and show the output in the \*journalctl\* buffer.
+-   journalctl: will ask for commandline parameters like "-xe" and show the output in the  '*journalctl*' buffer.
 - journalctl-boot: will provide you with the list of boots in the journal. You can choose one and view it in the buffer.
 
 In journalctl-mode you can navigate between the cunks with "n" (next chunk) and "p" (previous chunk).
