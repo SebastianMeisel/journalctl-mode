@@ -125,7 +125,7 @@
 	 (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
 	 (last-line (if (<= (+ first-line journalctl-chunk-size) journalctl-current-lines)
 			(+ first-line journalctl-chunk-size)
-		      lines)))
+		      journalctl-current-lines)))
     (with-current-buffer (get-buffer-create "*journalctl*")
       (setq buffer-read-only nil)
       (fundamental-mode)
@@ -225,8 +225,9 @@ If BOOT is provided it is the number of the boot-log to be shown."
   (let ((map (make-keymap "journalctl")))
     (define-key map (kbd "n") 'journalctl-next-chunk)
     (define-key map (kbd "p") 'journalctl-previous-chunk)
-    (define-key map (kbd "C-v") 'journalctl-up-down)
+    (define-key map (kbd "C-v") 'journalctl-scroll-up)
     (define-key map (kbd "M-v") 'journalctl-scroll-down)
+;;    (define-key map (kbd "q") (kill-buffer "*journalctl*")) ;
     map)
   "Keymap for journalctl mode.")
 
