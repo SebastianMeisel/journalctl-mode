@@ -91,6 +91,11 @@
   0
   "Counter for chunks of journalctl output loaded into the *journalctl*-buffer. ")
 
+(defvar journalctl-current-lines
+  0
+  "Number of lines  of journalctl output with current params.")
+
+
 (defvar journalctl-current-params
   ""
   "Keeps the parametes of  the last call of journalctl.")
@@ -114,11 +119,11 @@
 (defun journalctl (&optional flags chunk)
   "Run journalctl with give FLAGS and present output in a special buffer."
   (interactive)
-  (let* ((param (or flags (read-string "parameter: " nil nil "-xe ")))
-	 (this-chunk (or chunk  0)) ;; if chunk is not explicit given, we assume this first (0) chunk
-	 (lines (string-to-number (shell-command-to-string (concat "journalctl " param "|  wc -l"))))
+  (let ((param (or flags (read-string "parameter: " nil nil "-xe "))))
+    (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " param "|  wc -l"))))
+    (let* ((this-chunk (or chunk  0)) ;; if chunk is not explicit given, we assume this first (0) chunk
 	 (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
-	 (last-line (if (<= (+ first-line journalctl-chunk-size) lines)
+	 (last-line (if (<= (+ first-line journalctl-chunk-size) journalctl-current-lines)
 			(+ first-line journalctl-chunk-size)
 		      lines)))
     (with-current-buffer (get-buffer-create "*journalctl*")
@@ -129,16 +134,17 @@
   (switch-to-buffer "*journalctl*")
   (setq buffer-read-only t)
   (setq journalctl-current-params param)
-  (journalctl-mode)))
+  (journalctl-mode))))
+
+
+;;;;;; Moving and Chunks
 
 (defun journalctl-next-chunk ()
   "Load the next chunk of journalctl output to the buffer."
   (interactive)
-  (let* ((lines (string-to-number
-		(shell-command-to-string (concat "journalctl " journalctl-current-params "|  wc -l"))))
-	(chunk (if  (> (* (+ 2 journalctl-current-chunk) journalctl-chunk-size) lines)
-		 journalctl-current-chunk
-		 (+ journalctl-current-chunk 1) )))
+  (let* ((chunk (if  (> (* (+ 2 journalctl-current-chunk) journalctl-chunk-size) journalctl-current-lines)
+		    journalctl-current-chunk
+		  (+ journalctl-current-chunk 1) )))
 	(setq journalctl-current-chunk chunk)
 	(journalctl journalctl-current-params  chunk)))
 
@@ -149,6 +155,39 @@
 	(setq journalctl-current-chunk chunk)
 	(journalctl journalctl-current-params  chunk)))
 
+(defun journalctl-scroll-up ()
+  "Scroll up journalctl output or move to next chunk when bottom of frame is reached."
+  (interactive)
+  (let ((target-line  (+ (current-line) 25)))
+    (if (>= target-line journalctl-current-lines)
+	(message "%s" "End of journalctl output")
+      (if (>= target-line journalctl-chunk-size)
+	(journalctl-next-chunk)
+      (goto-line target-line)))))
+
+(defun journalctl-scroll-down ()
+  "Scroll down journalctl output or move to next chunk when bottom of frame is reached."
+  (interactive)
+  (let ((target-line  (- (current-line) 25)))
+    (if (>= target-line 0)
+	(if (>=  journalctl-current-chunk 0)
+	    	(message "%s" "Beginn of journalctl output")
+	(journalctl-previous-chunk))
+      (goto-line target-line))))
+
+
+(defun journalctl-scroll-down ()
+  "Scroll down journalctl output or move to next chunk when bottom of frame is reached."
+  (interactive)
+  (let ((target-line  (+ (current-line) 25)))
+    (if (>= target-line journalctl-current-lines)
+	(message "%s" "End of journalctl output")
+      (if (>= target-line journalctl-chunk-size)
+	(journalctl-next-chunk)
+      (goto-line target-line)))))
+
+
+;;;;;;;; Special functions
 
 (defun journalctl-boot (&optional boot)
   "Select and show boot-log.
@@ -186,6 +225,8 @@ If BOOT is provided it is the number of the boot-log to be shown."
   (let ((map (make-keymap "journalctl")))
     (define-key map (kbd "n") 'journalctl-next-chunk)
     (define-key map (kbd "p") 'journalctl-previous-chunk)
+    (define-key map (kbd "C-v") 'journalctl-up-down)
+    (define-key map (kbd "M-v") 'journalctl-scroll-down)
     map)
   "Keymap for journalctl mode.")
 
