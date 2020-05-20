@@ -1,0 +1,37 @@
+* Journalctl-mode
+
+This is a major-mode for emacs to view systemd's journalctl output in emacs.
+The output is plit into chunks for performance reasons. 
+
+Fontification is provided and may be customized.
+
+At the moment it is still in very early development (started some days ago). 
+
+!!!! DON'T USE FOR PRODUCTIVE WORK !!!!
+
+** Installation  
+
+Clone the project or download journalctl-mode.el and put that file to a load-path.
+
+Put  
+down 
+#+BEGIN_SRC  emacs-lisp
+( require 'journalctl-mode) 
+#+END_SRC
+
+in your .emacs file.
+
+** Prerequisites
+
+Helm is needed for the journalctl-boot function.
+
+
+** Usage
+
+At the moment there are to functions provided to call journalctl: 
+
+-   journalctl: will ask for commandline parameters like "-xe" and show the output in the \*journalctl\* buffer.
+- journalctl-boot: will provide you with the list of boots in the journal. You can choose one and view it in the buffer.
+
+In journalctl-mode you can navigate between the cunks with "n" (next chunk) and "p" (previous chunk).
+I also redefined C-v and M-v so that it will move to the next chunk, when you have reached the bottom or top of the buffer.
