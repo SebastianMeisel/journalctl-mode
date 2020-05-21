@@ -22,10 +22,12 @@
 
 ;;; Code:
 
+(require 'array)
+
 ;; customization
 
 (defcustom journalctl-chunk-size
-  1000
+  250
   "Number of lines of journalctl output that are loaded in the buffer. You can navigate "
   :group 'journalctl)
   
@@ -119,7 +121,7 @@
 (defun journalctl (&optional flags chunk)
   "Run journalctl with give FLAGS and present output in a special buffer."
   (interactive)
-  (let ((param (or flags (read-string "parameter: " nil nil "-xe "))))
+  (let ((param (or flags (read-string "parameter: " "-x  -n 1000" nil "-x "))))
     (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " param "|  wc -l"))))
     (let* ((this-chunk (or chunk  0)) ;; if chunk is not explicit given, we assume this first (0) chunk
 	 (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
@@ -198,8 +200,18 @@ If BOOT is provided it is the number of the boot-log to be shown."
  			    (helm :sources journalctl-boot-list))))))
     (journalctl (concat "-b " boot-log))))
 
-;; create the list for font-lock.
-;; each category of keyword is given a particular face
+(defun journalctl-add-param (&optional flags)
+  "Add parameters to journalctl call. 
+
+If FLAGS is set, use these parameters."
+  (interactive)
+  (let ((param (or flags (read-string "parameter: " "-x  -n 1000" nil ))))
+    (unless (string-match param journalctl-current-params)
+    (setq journalctl-current-params (concat journalctl-current-params  " " param)))
+    (journalctl journalctl-current-params journalctl-current-chunk)))
+;;;;;;;;;;;;;;;;; Fontlock
+
+
 (setq journalctl-font-lock-keywords
       (let* (
             ;; generate regex string for each category of keywords
@@ -225,6 +237,13 @@ If BOOT is provided it is the number of the boot-log to be shown."
   (let ((map (make-keymap "journalctl")))
     (define-key map (kbd "n") 'journalctl-next-chunk)
     (define-key map (kbd "p") 'journalctl-previous-chunk)
+    ;; add params
+    (define-key map (kbd "+ +")  'journalctl-add-param)
+    (define-key map (kbd "+ r")  (lambda () (interactive) (journalctl-add-param "-r" )));; reverse output
+    (define-key map (kbd "+ x")  (lambda () (interactive) (journalctl-add-param "-x" )));; add explanations
+    (define-key map (kbd "+ s")  (lambda () (interactive) (journalctl-add-param "--system" )));; system-units only
+    (define-key map (kbd "+ u")  (lambda () (interactive) (journalctl-add-param "--user" )));; user-units only
+    ;;
     (define-key map (kbd "C-v") 'journalctl-scroll-up)
     (define-key map (kbd "M-v") 'journalctl-scroll-down)
 ;;    (define-key map (kbd "q") (kill-buffer "*journalctl*")) ;
