@@ -1,13 +1,11 @@
 * Journalctl-mode
 
 This is a major-mode for emacs to view systemd's journalctl output in emacs.
-The output is plit into chunks for performance reasons. 
+The output is split into chunks for performance reasons. 
 
 Fontification is provided and may be customized.
 
-At the moment it is still in very early development (started some days ago). 
-
-!!!! DON'T USE FOR PRODUCTIVE WORK !!!!
+At the moment it is still in very early development. Please give feedback on any problems that occure.
 
 ** Installation  
 
