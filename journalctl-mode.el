@@ -76,7 +76,7 @@
     '((t :foreground "green"  :bold nil))
     "Face to mark starting units in journalctl's output."
         :group 'journalctl)
-
+ 
 (defface journalctl-finished-face
     '((t :foreground "green"  :bold t))
     "Face to mark finished units in journalctl's output."
@@ -178,17 +178,17 @@
 	(message "%s" "End of journalctl output")
       (if (>= target-line journalctl-chunk-size)
 	(journalctl-next-chunk)
-      (forward-line target-line)))))
+      (forward-line 25)))))
 
 (defun journalctl-scroll-down ()
   "Scroll down journalctl output or move to next chunk when bottom of frame is reached."
   (interactive)
   (let ((target-line  (- (current-line) 25)))
-    (if (>= target-line 0)
-	(if (>=  journalctl-current-chunk 0)
+    (if (<= target-line 0)
+	(if (<=  journalctl-current-chunk 0)
 	    	(message "%s" "Beginn of journalctl output")
-	(journalctl-previous-chunk))
-      (forward-line target-line))))
+	(journalctl-previous-chunk)))
+      (forward-line  -25)))
 
 ;;;;;;;; Special functions
 
