@@ -26,72 +26,81 @@
 
 ;; customization
 
+(defgroup journalctl nil
+  "View journalctl output in a emacs buffer"
+  :group 'external)
+
 (defcustom journalctl-chunk-size
   250
-  "Number of lines of journalctl output that are loaded in the buffer. You can navigate "
-  :group 'journalctl)
+ "Number of lines of journalctl output that are loaded in the buffer.  You can navigate."
+  :group 'journalctl
+  :type 'integer)
   
 (defcustom journalctl-error-keywords
   '("Failed" "failed" "Error" "error" "critical" "couldn't" "Can't" "not" "Not" "unreachable")
-  "Keywords that mark errors in journalctl output"
-  :group 'journalctl)
+  "Keywords that mark errors in journalctl output."
+  :group 'journalctl
+  :type 'string)
 
 (defcustom journalctl-warn-keywords
   '("Warning" "warn" "debug")
-  "Keywords that mark warnings in journalctl output"
-  :group 'journalctl)
+  "Keywords that mark warnings in journalctl output."
+  :group 'journalctl
+  :type 'string)
 
 (defcustom journalctl-starting-keywords
   '("Starting" "Activating" "Listening" "Reloading" "connect")
-  "Keywords that mark start of processes or steps in journalctl output"
-  :group 'journalctl)
+  "Keywords that mark start of processes or steps in journalctl output."
+  :group 'journalctl
+  :type 'string)
 
 (defcustom journalctl-finished-keywords
   '("Stopped" "Stopping" "Reached" "Closed" "finished" "Started" "Successfully activated"
     "Received" "opened" "success" "enabled" "removed" "active" "Created" "loaded" "detected")
-  "Keywords that mark finished processes or steps in journalctl output"
-  :group 'journalctl)
+  "Keywords that mark finished processes or steps in journalctl output."
+  :group 'journalctl
+  :type 'string)
 
 ;;; faces
 (defface journalctl-error-face
-    '((t :foreground "red" :bold t)) 
+    '((t :foreground "red" :bold t))
     "Face to mark errors in journalctl's output."
     :group 'journalctl)
 
 (defface journalctl-warning-face
-    '((t :foreground "orange" :bold t)) 
+    '((t :foreground "orange" :bold t))
     "Face to mark warnings in journalctl's output."
         :group 'journalctl)
 
 (defface journalctl-starting-face
-    '((t :foreground "green"  :bold nil)) 
+    '((t :foreground "green"  :bold nil))
     "Face to mark starting units in journalctl's output."
         :group 'journalctl)
 
 (defface journalctl-finished-face
-    '((t :foreground "green"  :bold t)) 
+    '((t :foreground "green"  :bold t))
     "Face to mark finished units in journalctl's output."
         :group 'journalctl)
 
 (defface journalctl-timestamp-face
-    '((t :foreground "white"  :bold t)) 
+    '((t :foreground "white"  :bold t))
     "Face for timestamps in journalctl's output."
         :group 'journalctl)
 
  (defface journalctl-host-face
-    '((t :foreground "blue"  :bold nil)) 
+    '((t :foreground "blue"  :bold nil))
     "Face for hosts in journalctl's output."
         :group 'journalctl)
 
 (defface journalctl-process-face
-    '((t :foreground "lightblue"  :bold nil)) 
+    '((t :foreground "lightblue"  :bold nil))
     "Face for hosts in journalctl's output."
         :group 'journalctl)
 
 ;; variables
 (defvar journalctl-current-chunk
   0
-  "Counter for chunks of journalctl output loaded into the *journalctl*-buffer. ")
+  "Counter for chunks of journalctl output loaded into the *journalctl*-buffer.")
 
 (defvar journalctl-current-lines
   0
@@ -101,6 +110,10 @@
 (defvar journalctl-current-params
   ""
   "Keeps the parametes of  the last call of journalctl.")
+
+(defvar journalctl-current-filter
+  ""
+  "Keeps filters as grep that shall be applied to journalctl's output.")
 
 (defvar journalctl-disk-usage
   (concat
@@ -119,7 +132,7 @@
 ;; functions
 
 (defun journalctl (&optional flags chunk)
-  "Run journalctl with give FLAGS and present output in a special buffer."
+  "Run journalctl with give FLAGS and present CHUNK of  output in a special buffer."
   (interactive)
   (let ((param (or flags (read-string "parameter: " "-x  -n 1000" nil "-x "))))
     (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " param "|  wc -l"))))
@@ -132,7 +145,7 @@
       (setq buffer-read-only nil)
       (fundamental-mode)
       (erase-buffer))
-    (shell-command  (concat "journalctl " param " | sed -ne '"  (int-to-string first-line) "," (int-to-string last-line) "p'") "*journalctl*" "*journalctl-error*")
+    (shell-command  (concat "journalctl " param journalctl-current-filter " | sed -ne '"  (int-to-string first-line) "," (int-to-string last-line) "p'") "*journalctl*" "*journalctl-error*")
   (switch-to-buffer "*journalctl*")
   (setq buffer-read-only t)
   (setq journalctl-current-params param)
@@ -165,7 +178,7 @@
 	(message "%s" "End of journalctl output")
       (if (>= target-line journalctl-chunk-size)
 	(journalctl-next-chunk)
-      (goto-line target-line)))))
+      (forward-line target-line)))))
 
 (defun journalctl-scroll-down ()
   "Scroll down journalctl output or move to next chunk when bottom of frame is reached."
@@ -175,19 +188,7 @@
 	(if (>=  journalctl-current-chunk 0)
 	    	(message "%s" "Beginn of journalctl output")
 	(journalctl-previous-chunk))
-      (goto-line target-line))))
-
-
-(defun journalctl-scroll-down ()
-  "Scroll down journalctl output or move to next chunk when bottom of frame is reached."
-  (interactive)
-  (let ((target-line  (+ (current-line) 25)))
-    (if (>= target-line journalctl-current-lines)
-	(message "%s" "End of journalctl output")
-      (if (>= target-line journalctl-chunk-size)
-	(journalctl-next-chunk)
-      (goto-line target-line)))))
-
+      (forward-line target-line))))
 
 ;;;;;;;; Special functions
 
@@ -195,13 +196,13 @@
   "Select and show boot-log.
 
 If BOOT is provided it is the number of the boot-log to be shown."
-  (interactive)  
-  (let ((boot-log (or boot (car (split-string 
+  (interactive)
+  (let ((boot-log (or boot (car (split-string
  			    (helm :sources journalctl-boot-list))))))
     (journalctl (concat "-b " boot-log))))
 
 (defun journalctl-add-param (&optional flags)
-  "Add parameters to journalctl call. 
+  "Add parameters to journalctl call.
 
 If FLAGS is set, use these parameters."
   (interactive)
@@ -209,10 +210,25 @@ If FLAGS is set, use these parameters."
     (unless (string-match param journalctl-current-params)
     (setq journalctl-current-params (concat journalctl-current-params  " " param)))
     (journalctl journalctl-current-params journalctl-current-chunk)))
+
+(defun journalctl-grep (&optional pattern)
+  "Run journalctl with -grep flag to search for PATTERN."
+  (interactive)
+  (let ((pattern (or pattern (read-string "grep pattern: " nil nil ))))
+    (setq journalctl-current-filter (concat journalctl-current-filter  "| grep '" pattern "'" ))
+    (journalctl journalctl-current-params journalctl-current-chunk)))
+
+(defun journalctl-remove-filter ()
+  "Remove all filters such as grep from journalctl output."
+  (interactive)
+  (setq journalctl-current-filter "")
+    (journalctl journalctl-current-params journalctl-current-chunk))
+  
+
 ;;;;;;;;;;;;;;;;; Fontlock
 
 
-(setq journalctl-font-lock-keywords
+(defvar journalctl-font-lock-keywords
       (let* (
             ;; generate regex string for each category of keywords
 	     (error-keywords-regexp (regexp-opt journalctl-error-keywords 'words))
@@ -243,6 +259,8 @@ If FLAGS is set, use these parameters."
     (define-key map (kbd "+ x")  (lambda () (interactive) (journalctl-add-param "-x" )));; add explanations
     (define-key map (kbd "+ s")  (lambda () (interactive) (journalctl-add-param "--system" )));; system-units only
     (define-key map (kbd "+ u")  (lambda () (interactive) (journalctl-add-param "--user" )));; user-units only
+    ;; grep
+    (define-key map (kbd "+ g")  'journalctl-grep);; user-units only
     ;;
     (define-key map (kbd "C-v") 'journalctl-scroll-up)
     (define-key map (kbd "M-v") 'journalctl-scroll-down)
@@ -258,7 +276,7 @@ If FLAGS is set, use these parameters."
   (setq mode-line-process journalctl-disk-usage)
   ;; code for syntax highlighting
   (setq font-lock-defaults '((journalctl-font-lock-keywords)))
-    ;; Keymap 
+    ;; Keymap
   (use-local-map journalctl-mode-map))
 
 ;; add the mode to the `features' list
