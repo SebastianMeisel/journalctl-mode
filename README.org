@@ -38,6 +38,10 @@ There are also some keybindings to add parameters:
 - "+ s": Show  messages from system services and the kernel  only (--system).
 - "+u": Show messages from service of current user only (--user).
 
+You can edit the current parameters with "e".
+
 You can grep on the current output of journalctl with "+ g". You will be asked for a pattern to grep.
 
 You can remove all filters (grep) with "- -".
+
+Type "q" to kill the "\ast{}journalctl\ast{}" buffer.
