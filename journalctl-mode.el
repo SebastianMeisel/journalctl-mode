@@ -197,6 +197,16 @@ If BOOT is provided it is the number of the boot-log to be shown."
 		     (shell-command-to-string "journalctl --list-boots") "[\n]" t " ") nil t))))))
     (journalctl (concat "-b " boot-log))))
 
+(defun journalctl-unit (&optional unit)
+  "Select and show journal for UNIT."
+  (interactive)
+  (let ((unit (or unit (car (split-string
+				 (completing-read "unit: " (split-string
+		     (shell-command-to-string "systemctl list-units --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
+    (journalctl (concat "--unit='" unit "'"))))
+
+
+
 (defun journalctl-add-param (&optional flags)
   "Add parameters to journalctl call.
 
@@ -262,6 +272,7 @@ If FLAGS is set, use these parameters."
     (define-key map (kbd "+ x")  (lambda () (interactive) (journalctl-add-param "-x" )));; add explanations
     (define-key map (kbd "+ s")  (lambda () (interactive) (journalctl-add-param "--system" )));; system-units only
     (define-key map (kbd "+ u")  (lambda () (interactive) (journalctl-add-param "--user" )));; user-units only
+    (define-key map (kbd "+ k")  (lambda () (interactive) (journalctl-add-param "--kernel" )));; user-units only
     ;;  edit params
     (define-key map (kbd "e") 'journalctl-edit-params)
     ;; grep
