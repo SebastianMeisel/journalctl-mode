@@ -35,3 +35,16 @@ At the moment there are to functions provided to call journalctl:
 
 In journalctl-mode you can navigate between the cunks with "n" (next chunk) and "p" (previous chunk).
 I also redefined C-v and M-v so that it will move to the next chunk, when you have reached the bottom or top of the buffer.
+
+You can add parameters from journalctl-mode with "+ +". 
+
+There are also some keybindings to add parameters: 
+
+- "+ r" : Reverse output (--reverse).
+- "+ x": Augment log lines with explanation texts from the message catalog.  (--catalog).
+- "+ s": Show  messages from system services and the kernel  only (--system).
+- "+u": Show messages from service of current user only (--user).
+
+You can grep on the current output of journalctl with "+ g". You will be asked for a pattern to grep.
+
+You can remove all filters (grep) with "- -".

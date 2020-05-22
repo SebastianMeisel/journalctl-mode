@@ -260,7 +260,8 @@ If FLAGS is set, use these parameters."
     (define-key map (kbd "+ s")  (lambda () (interactive) (journalctl-add-param "--system" )));; system-units only
     (define-key map (kbd "+ u")  (lambda () (interactive) (journalctl-add-param "--user" )));; user-units only
     ;; grep
-    (define-key map (kbd "+ g")  'journalctl-grep);; user-units only
+    (define-key map (kbd "+ g")  'journalctl-grep)
+    (define-key map (kbd "- -")  'journalctl-remove-filter)
     ;;
     (define-key map (kbd "C-v") 'journalctl-scroll-up)
     (define-key map (kbd "M-v") 'journalctl-scroll-down)
