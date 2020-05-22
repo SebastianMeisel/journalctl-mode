@@ -217,6 +217,13 @@ If FLAGS is set, use these parameters."
   (setq journalctl-current-filter "")
     (journalctl journalctl-current-params journalctl-current-chunk))
   
+(defun  journalctl-edit-params ()
+  "Edit the value of journalctl-current-params."
+  (interactive)
+  (let ((param (read-string "Parameters: " journalctl-current-params)))
+    (setq journalctl-current-params param)
+    (journalctl journalctl-current-params journalctl-current-chunk)))
+
 
 ;;;;;;;;;;;;;;;;; Fontlock
 
@@ -252,13 +259,15 @@ If FLAGS is set, use these parameters."
     (define-key map (kbd "+ x")  (lambda () (interactive) (journalctl-add-param "-x" )));; add explanations
     (define-key map (kbd "+ s")  (lambda () (interactive) (journalctl-add-param "--system" )));; system-units only
     (define-key map (kbd "+ u")  (lambda () (interactive) (journalctl-add-param "--user" )));; user-units only
+    ;;  edit params
+    (define-key map (kbd "e") 'journalctl-edit-params)
     ;; grep
     (define-key map (kbd "+ g")  'journalctl-grep)
     (define-key map (kbd "- -")  'journalctl-remove-filter)
     ;;
     (define-key map (kbd "C-v") 'journalctl-scroll-up)
     (define-key map (kbd "M-v") 'journalctl-scroll-down)
-;;    (define-key map (kbd "q") (kill-buffer "*journalctl*")) ;
+    (define-key map (kbd "q")  (lambda () (interactive) (kill-buffer  "*journalctl*")))
     map)
   "Keymap for journalctl mode.")
 
