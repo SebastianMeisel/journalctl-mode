@@ -121,14 +121,6 @@
    (shell-command-to-string "journalctl --disk-usage | egrep -o '[0-9.]+G'"))
   "Disk-usage of  journalctl.")
 
-(defvar journalctl-boot-list
-  '((name . "List of boot-logs")
-    (candidates . (lambda ()
-		    (split-string
-		     (shell-command-to-string "journalctl --list-boots") "[\n]" t " ")))
-    (action  . (lambda (candidate)
-		 (message "%s" candidate) )) )
-  "Helm query for  boot-logs available to journalctl.")
 ;; functions
 
 (defun journalctl (&optional flags chunk)
@@ -198,7 +190,8 @@
 If BOOT is provided it is the number of the boot-log to be shown."
   (interactive)
   (let ((boot-log (or boot (car (split-string
- 			    (helm :sources journalctl-boot-list))))))
+				 (completing-read "Boot: " (split-string
+		     (shell-command-to-string "journalctl --list-boots") "[\n]" t " ") nil t))))))
     (journalctl (concat "-b " boot-log))))
 
 (defun journalctl-add-param (&optional flags)

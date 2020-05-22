@@ -19,11 +19,6 @@ down
 
 in your .emacs file.
 
-** Prerequisites
-
-Helm is needed for the journalctl-boot function.
-
-
 ** Usage
 
 At the moment there are to functions provided to call journalctl: 
