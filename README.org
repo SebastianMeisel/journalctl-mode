@@ -38,6 +38,7 @@ There are also some keybindings to add parameters:
 - "+ x": Augment log lines with explanation texts from the message catalog.  (--catalog).
 - "+ s": Show  messages from system services and the kernel  only (--system).
 - "+u": Show messages from service of current user only (--user).
+- "+k": Show kernel message only (--kernel). This applies "- b".
 
 You can edit the current parameters with "e".
 
