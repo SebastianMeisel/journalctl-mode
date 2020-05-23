@@ -16,12 +16,12 @@
 
 ;;; Commentary:
 
-;; This is a major-mode for emacs to view systemd's journalctl output in emacs.
-;; The output is split into chunks for performance reasons. 
+;; This is a major-mode for Emacs to view systemd's journalctl output in Emacs.
+;; The output is split into chunks for performance reasons.
 ;; Fontification is provided and may be customized.
-;; At the moment it is still in very early development. Please give feedback on any problems that occure.
+;; At the moment it is still in very early development.  Please give feedback on any problems that occure.
 
-;; Put journalctl-mode.el in your load-path and add   ( require 'journalctl-mode)  to your .emacs file.
+;; Put journalctl-mode.el in your load-path and add   ( require 'journalctl-mode)  to your .Emacs file.
 
 ;;; Code:
 
@@ -205,8 +205,6 @@ If BOOT is provided it is the number of the boot-log to be shown."
 		     (shell-command-to-string "systemctl list-units --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
     (journalctl (concat "--unit='" unit "'"))))
 
-
-
 (defun journalctl-add-param (&optional flags)
   "Add parameters to journalctl call.
 
@@ -216,6 +214,21 @@ If FLAGS is set, use these parameters."
     (unless (string-match param journalctl-current-params)
     (setq journalctl-current-params (concat journalctl-current-params  " " param)))
     (journalctl journalctl-current-params journalctl-current-chunk)))
+
+(defun journalctl-add-since (&optional date)
+  "Add '--since' option with DATE or ask for date."
+  (interactive)
+  (let ((date (or  date
+		   		   (if  (fboundp 'org-read-date)  (org-read-date t) (read-string "Date [yy-mm-dd [hh:mm[:ss]]]")))))
+     (journalctl-add-param (concat " --since='" date "'"))))
+
+(defun journalctl-add-until (&optional date)
+  "Add '--until' option with DATE or ask for date."
+  (interactive)
+  (let ((date (or  date
+		   (if  (fboundp 'org-read-date)  (org-read-date t) (read-string "Date [yy-mm-dd [hh:mm[:ss]]]")))))
+     (journalctl-add-param (concat " --until='" date "'"))))
+
 
 (defun journalctl-grep (&optional pattern)
   "Run journalctl with -grep flag to search for PATTERN."
@@ -231,7 +244,7 @@ If FLAGS is set, use these parameters."
     (journalctl journalctl-current-params journalctl-current-chunk))
   
 (defun  journalctl-edit-params ()
-  "Edit the value of journalctl-current-params."
+  "Edit the value of 'journalctl-current-params'."
   (interactive)
   (let ((param (read-string "Parameters: " journalctl-current-params)))
     (setq journalctl-current-params param)
@@ -273,6 +286,8 @@ If FLAGS is set, use these parameters."
     (define-key map (kbd "+ s")  (lambda () (interactive) (journalctl-add-param "--system" )));; system-units only
     (define-key map (kbd "+ u")  (lambda () (interactive) (journalctl-add-param "--user" )));; user-units only
     (define-key map (kbd "+ k")  (lambda () (interactive) (journalctl-add-param "--kernel" )));; user-units only
+    (define-key map (kbd "+ S")  'journalctl-add-since)
+    (define-key map (kbd "+ U")  'journalctl-add-until)
     ;;  edit params
     (define-key map (kbd "e") 'journalctl-edit-params)
     ;; grep
