@@ -1,12 +1,14 @@
-;;; journalctl-mode.el --- sample major mode for  viewing output journalctl. -*- coding: utf-8; lexical-binding: t; -*-
+;;; journalctl-mode.el --- Sample major mode for  viewing output journalctl -*- coding: utf-8; lexical-binding: t; -*-
 
 ;; Copyright © 2020, by Sebastian Meisel
 
-;; Author: Sebastian Meisel (sebastian.meisel@gmail.com)
-;; Version: 0.1
-;; Created:  Mai 16, 2020
-;; Keywords: system
+;; Author: Sebastian Meisel <sebastian.meisel@gmail.com>
+;; Version: 0.8
+;; Created:  Mai 23, 2020
+;; Homepage: http://github.com/SebastianMeisel/fontpreview-mode
+;; Keywords: unix
 ;; Homepage: http://github.com/SebastianMeisel/journalctl-mode
+;; Package-Requires: ((emacs "24.1"))
 
 ;; This file is not part of GNU Emacs.
 
