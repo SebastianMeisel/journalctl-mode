@@ -40,6 +40,9 @@ There are also some keybindings to add parameters:
 - "+u": Show messages from service of current user only (--user).
 - "+k": Show kernel message only (--kernel). This applies "- b".
 
+- "+S": Show messages since given date and / or time (--since).
+- "+U": Show messages until given date and / or time (--until).
+
 You can edit the current parameters with "e".
 
 You can grep on the current output of journalctl with "+ g". You will be asked for a pattern to grep.
