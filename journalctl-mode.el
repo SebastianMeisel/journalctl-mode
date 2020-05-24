@@ -221,7 +221,7 @@ If BOOT is provided it is the number of the boot-log to be shown."
 
 If FLAGS is set, use these parameters."
   (interactive)
-  (let ((param (or flags (read-string "parameter: " "-x  -n 1000" nil ))))
+  (let ((param (or flags (read-string "parameter: " "" nil ))))
     (unless (string-match param journalctl-current-params)
     (setq journalctl-current-params (concat journalctl-current-params  " " param)))
     (journalctl journalctl-current-params journalctl-current-chunk)))
@@ -240,6 +240,20 @@ If FLAGS is set, use these parameters."
 		   (if  (fboundp 'org-read-date)  (org-read-date t) (read-string "Date [yy-mm-dd [hh:mm[:ss]]]")))))
      (journalctl-add-param (concat " --until='" date "'"))))
 
+(defun journalctl-add-priority (&optional priority to-priority)
+  "Add '--priority' option with PRIORITY.
+If TO-PRIORITY is non-nil, call '--priority' with range
+from PRIORITY  TO-PRIORITY.
+If none is non-nil it will prompt for priority (range)."
+  (interactive)
+  (let* ((priority (or  priority (completing-read "Priority: "
+						 '("emerg" "alert" "crit" "err" "warning" "notice" "info" "debug")
+						 nil t "warning")))
+	(to-priority (or  to-priority (completing-read "Priority: "
+						 '(("emerg" "alert" "crit" "err" "warning" "notice" "info" "debug"))
+						 nil nil priority)))
+	(param (concat "--priority='" priority (when to-priority (concat ".." to-priority)) "'")))
+     (journalctl-add-param param)))
 
 (defun journalctl-grep (&optional pattern)
   "Run journalctl with -grep flag to search for PATTERN."
@@ -299,6 +313,7 @@ If FLAGS is set, use these parameters."
     (define-key map (kbd "+ k")  (lambda () (interactive) (journalctl-add-param "--kernel" )));; user-units only
     (define-key map (kbd "+ S")  'journalctl-add-since)
     (define-key map (kbd "+ U")  'journalctl-add-until)
+    (define-key  map (kbd "+ p")  'journalctl-add-priority)
     ;;  edit params
     (define-key map (kbd "e") 'journalctl-edit-params)
     ;; grep
