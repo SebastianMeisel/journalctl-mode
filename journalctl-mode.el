@@ -134,19 +134,24 @@
   (let ((param (or flags (read-string "parameter: " "-x  -n 1000" nil "-x "))))
     (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " param "|  wc -l"))))
     (let* ((this-chunk (or chunk  0)) ;; if chunk is not explicit given, we assume this first (0) chunk
-	 (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
-	 (last-line (if (<= (+ first-line journalctl-chunk-size) journalctl-current-lines)
-			(+ first-line journalctl-chunk-size)
-		      journalctl-current-lines)))
-    (with-current-buffer (get-buffer-create "*journalctl*")
-      (setq buffer-read-only nil)
-      (fundamental-mode)
-      (erase-buffer))
-    (shell-command  (concat "journalctl " param journalctl-current-filter " | sed -ne '"  (int-to-string first-line) "," (int-to-string last-line) "p'") "*journalctl*" "*journalctl-error*")
-  (switch-to-buffer "*journalctl*")
-  (setq buffer-read-only t)
-  (setq journalctl-current-params param)
-  (journalctl-mode))))
+	         (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
+	         (last-line (if (<= (+ first-line journalctl-chunk-size)
+                              journalctl-current-lines)
+			                    (+ first-line journalctl-chunk-size)
+		                    journalctl-current-lines)))
+      (with-current-buffer (get-buffer-create "*journalctl*")
+        (setq buffer-read-only nil)
+        (fundamental-mode)
+        (erase-buffer))
+      (save-window-excurion
+       (shell-command (concat "journalctl " param journalctl-current-filter
+                              " | sed -ne '"  (int-to-string first-line) ","
+                              (int-to-string last-line) "p'")
+                      "*journalctl*" "*journalctl-error*"))
+      (switch-to-buffer "*journalctl*")
+      (setq buffer-read-only t)
+      (setq journalctl-current-params param)
+      (journalctl-mode))))
 
 
 ;;;;;; Moving and Chunks
