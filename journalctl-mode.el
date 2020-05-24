@@ -204,8 +204,17 @@ If BOOT is provided it is the number of the boot-log to be shown."
   (interactive)
   (let ((unit (or unit (car (split-string
 				 (completing-read "unit: " (split-string
-		     (shell-command-to-string "systemctl list-units --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
+		     (shell-command-to-string "systemctl list-units --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
     (journalctl (concat "--unit='" unit "'"))))
+
+(defun journalctl-user-unit (&optional unit)
+  "Select and show journal for the user-unit UNIT."
+  (interactive)
+  (let ((unit (or unit (car (split-string
+				 (completing-read "unit: " (split-string
+		     (shell-command-to-string "systemctl list-units --all --user --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
+    (journalctl (concat "--user-unit='" unit "'"))))
+
 
 (defun journalctl-add-param (&optional flags)
   "Add parameters to journalctl call.
