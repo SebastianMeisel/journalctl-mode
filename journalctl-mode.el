@@ -143,7 +143,7 @@
         (setq buffer-read-only nil)
         (fundamental-mode)
         (erase-buffer))
-      (save-window-excurion
+      (save-window-excursion
        (shell-command (concat "journalctl " param journalctl-current-filter
                               " | sed -ne '"  (int-to-string first-line) ","
                               (int-to-string last-line) "p'")
