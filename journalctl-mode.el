@@ -246,13 +246,16 @@ If TO-PRIORITY is non-nil, call '--priority' with range
 from PRIORITY  TO-PRIORITY.
 If none is non-nil it will prompt for priority (range)."
   (interactive)
-  (let* ((priority (or  priority (completing-read "Priority: "
+  (let* ((from-priority (or  priority (completing-read "Priority: "
 						 '("emerg" "alert" "crit" "err" "warning" "notice" "info" "debug")
 						 nil t "warning")))
-	(to-priority (or  to-priority (completing-read "Priority: "
+	 (to-priority (if  priority  
+			 (or to-priority nil)
+			(or to-priority  (completing-read "Priority: "
 						 '(("emerg" "alert" "crit" "err" "warning" "notice" "info" "debug"))
-						 nil nil priority)))
-	(param (concat "--priority='" priority (when to-priority (concat ".." to-priority)) "'")))
+						 nil nil priority))))
+	 (param (concat "--priority='" from-priority (when to-priority
+						       (unless (string-equal from-priority to-priority) (concat ".." to-priority))) "'")))
      (journalctl-add-param param)))
 
 (defun journalctl-grep (&optional pattern)
