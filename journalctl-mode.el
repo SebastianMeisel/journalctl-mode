@@ -313,7 +313,7 @@ If none is non-nil it will prompt for priority (range)."
     (define-key map (kbd "+ x")  (lambda () (interactive) (journalctl-add-param "-x" )));; add explanations
     (define-key map (kbd "+ s")  (lambda () (interactive) (journalctl-add-param "--system" )));; system-units only
     (define-key map (kbd "+ u")  (lambda () (interactive) (journalctl-add-param "--user" )));; user-units only
-    (define-key map (kbd "+ k")  (lambda () (interactive) (journalctl-add-param "--kernel" )));; user-units only
+    (define-key map (kbd "+ k")  (lambda () (interactive) (journalctl-add-param "--dmesg" )));; user-units only
     (define-key map (kbd "+ S")  'journalctl-add-since)
     (define-key map (kbd "+ U")  'journalctl-add-until)
     (define-key  map (kbd "+ p")  'journalctl-add-priority)
