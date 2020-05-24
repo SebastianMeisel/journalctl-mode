@@ -26,6 +26,7 @@ At the moment there are to functions provided to call journalctl:
 -   journalctl: will ask for commandline parameters like "-xe" and show the output in the  \ast{}journalctl\ast{} buffer.
 - journalctl-boot: will provide you with the list of boots in the journal. You can choose one and view it in the buffer.
 - journalctl-unit: will provide you with the list of units . You can choose one and view related logs  in the buffer.
+- journalctl-user-unit: will provide you with the list of user-units . You can choose one and view related logs  in the buffer.
 
 In journalctl-mode you can navigate between the cunks with "n" (next chunk) and "p" (previous chunk).
 I also redefined C-v and M-v so that it will move to the next chunk, when you have reached the bottom or top of the buffer.
@@ -39,6 +40,8 @@ There are also some keybindings to add parameters:
 - "+ s": Show  messages from system services and the kernel  only (--system).
 - "+u": Show messages from service of current user only (--user).
 - "+k": Show kernel message only (--kernel). This applies "- b".
+
+- "+p"  prompt for priority range and show the respective messages  (--priority).
 
 - "+S": Show messages since given date and / or time (--since).
 - "+U": Show messages until given date and / or time (--until).
