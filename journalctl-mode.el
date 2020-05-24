@@ -195,8 +195,8 @@
 If BOOT is provided it is the number of the boot-log to be shown."
   (interactive)
   (let ((boot-log (or boot (car (split-string
-				 (completing-read "Boot: " (split-string
-		     (shell-command-to-string "journalctl --list-boots") "[\n]" t " ") nil t))))))
+				 (completing-read "Boot: " (reverse (split-string
+		     (shell-command-to-string "journalctl --list-boots") "[\n]" t " ")) nil t))))))
     (journalctl (concat "-b " boot-log))))
 
 (defun journalctl-unit (&optional unit)
