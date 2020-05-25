@@ -67,39 +67,39 @@
 
 ;;; faces
 (defface journalctl-error-face
-    '((t :foreground "red" :bold t))
-    "Face to mark errors in journalctl's output."
-    :group 'journalctl)
+  '((t :inherit error))
+  "Face to mark errors in journalctl's output."
+  :group 'journalctl)
 
 (defface journalctl-warning-face
-    '((t :foreground "orange" :bold t))
-    "Face to mark warnings in journalctl's output."
-        :group 'journalctl)
+  '((t :inherit warning))
+  "Face to mark warnings in journalctl's output."
+  :group 'journalctl)
 
 (defface journalctl-starting-face
-    '((t :foreground "green"  :bold nil))
-    "Face to mark starting units in journalctl's output."
-        :group 'journalctl)
- 
+  '((t :inherit success))
+  "Face to mark starting units in journalctl's output."
+  :group 'journalctl)
+
 (defface journalctl-finished-face
-    '((t :foreground "green"  :bold t))
-    "Face to mark finished units in journalctl's output."
-        :group 'journalctl)
+  '((t :inherit success :bold t))
+  "Face to mark finished units in journalctl's output."
+  :group 'journalctl)
 
 (defface journalctl-timestamp-face
-    '((t :foreground "white"  :bold t))
-    "Face for timestamps in journalctl's output."
-        :group 'journalctl)
+  '((t :inherit font-lock-type-face))
+  "Face for timestamps in journalctl's output."
+  :group 'journalctl)
 
- (defface journalctl-host-face
-    '((t :foreground "blue"  :bold nil))
-    "Face for hosts in journalctl's output."
-        :group 'journalctl)
+(defface journalctl-host-face
+  '((t :inherit font-lock-keyword-face))
+  "Face for hosts in journalctl's output."
+  :group 'journalctl)
 
 (defface journalctl-process-face
-    '((t :foreground "lightblue"  :bold nil))
-    "Face for hosts in journalctl's output."
-        :group 'journalctl)
+  '((t :inherit font-lock-function-name-face))
+  "Face for hosts in journalctl's output."
+  :group 'journalctl)
 
 ;; variables
 (defvar journalctl-current-chunk
