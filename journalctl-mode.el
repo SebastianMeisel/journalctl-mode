@@ -5,7 +5,6 @@
 ;; Author: Sebastian Meisel <sebastian.meisel@gmail.com>
 ;; Version: 0.8
 ;; Created:  Mai 23, 2020
-;; Homepage: http://github.com/SebastianMeisel/fontpreview-mode
 ;; Keywords: unix
 ;; Homepage: http://github.com/SebastianMeisel/journalctl-mode
 ;; Package-Requires: ((emacs "24.1"))
