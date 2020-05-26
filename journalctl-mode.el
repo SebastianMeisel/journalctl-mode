@@ -6,7 +6,7 @@
 ;; Version: 0.8
 ;; Created:  Mai 23, 2020
 ;; Keywords: unix
-;; Homepage: http://github.com/SebastianMeisel/journalctl-mode
+;; Homepage: https://github.com/SebastianMeisel/journalctl-mode
 ;; Package-Requires: ((emacs "24.1"))
 
 ;; This file is not part of GNU Emacs.
@@ -234,14 +234,14 @@ If FLAGS is set, use these parameters."
   "Add '--since' option with DATE or ask for date."
   (interactive)
   (let ((date (or  date
-		   		   (if  (fboundp 'org-read-date)  (org-read-date t) (read-string "Date [yy-mm-dd [hh:mm[:ss]]]")))))
+		   		   (if  (fboundp 'org-read-date)  (org-read-date t) (read-string "Date [yy-mm-dd [hh:mm[:ss]]]: ")))))
      (journalctl-add-param (concat " --since='" date "'"))))
 
 (defun journalctl-add-until (&optional date)
   "Add '--until' option with DATE or ask for date."
   (interactive)
   (let ((date (or  date
-		   (if  (fboundp 'org-read-date)  (org-read-date t) (read-string "Date [yy-mm-dd [hh:mm[:ss]]]")))))
+		   (if  (fboundp 'org-read-date)  (org-read-date t) (read-string "Date [yy-mm-dd [hh:mm[:ss]]]: ")))))
      (journalctl-add-param (concat " --until='" date "'"))))
 
 (defun journalctl-add-priority (&optional priority to-priority)
