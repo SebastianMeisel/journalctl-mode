@@ -253,7 +253,7 @@ If none is non-nil it will prompt for priority (range)."
   (let* ((from-priority (or  priority (completing-read "Priority: "
 						 '("emerg" "alert" "crit" "err" "warning" "notice" "info" "debug")
 						 nil t "warning")))
-	 (to-priority (if  priority  
+	 (to-priority (if  priority
 			 (or to-priority nil)
 			(or to-priority  (completing-read "Priority: "
 						 '(("emerg" "alert" "crit" "err" "warning" "notice" "info" "debug"))
@@ -336,13 +336,10 @@ If none is non-nil it will prompt for priority (range)."
 ;;;###autoload
 (define-derived-mode journalctl-mode c-mode "journalctl mode"
   "Major mode for viewing journalctl output"
-  (setq major-mode 'journalctl-mode)
-  (setq mode-name "journalctl")
   (setq mode-line-process journalctl-disk-usage)
   ;; code for syntax highlighting
-  (setq font-lock-defaults '((journalctl-font-lock-keywords)))
-    ;; Keymap
-  (use-local-map journalctl-mode-map))
+  (setq font-lock-defaults '((journalctl-font-lock-keywords))))
+
 
 ;; add the mode to the `features' list
 (provide 'journalctl-mode)
