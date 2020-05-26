@@ -127,6 +127,40 @@
 
 ;; functions
 
+;; parameter test
+(defvar journalctl-param-list nil)
+
+(defvar journalctl-list-of-parameters
+  ("x" "b" "k" "S" "U" "l" "a" "e" "n" "r" "o" "x" "q" "m" "t" "u" "p"
+   "F" "M" "D"
+   "-since" "-until" "-dmesg" "-boot"
+   "-system" "-user"
+   "-unit" "-user-unit"
+   "-directory" "-file" "-machine" "-root"
+   "-no-full" "-full" "all"
+   "-pager-end"
+   "-output"   "-output-fields"
+   "-utc"
+   "-no-hostname"
+   "-catalog" "quiet"
+   "-merge"
+   "-identifier" "-priority"
+   "-fields"
+   )
+  "List of possible parameters to be given to journalctl without the first dash." )
+
+(defun journalctl-check-param ()
+ "Check parameters given to journalctl."
+  (interactive)
+  (let  ((list  (split-string journalctl-current-params " -" t "[- ]+")))
+    (while list
+      (setq journalctl-param-list (cons (split-string   (car list) "[= ]+" t "\s+") journalctl-param-list))
+      (setq list (cdr list)	)))
+;;  Add function to test the parameters and maybe values
+  )
+
+
+;;; Main
 (defun journalctl (&optional flags chunk)
   "Run journalctl with give FLAGS and present CHUNK of  output in a special buffer."
   (interactive)
