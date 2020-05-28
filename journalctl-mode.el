@@ -131,7 +131,7 @@
 (defvar journalctl-param-list nil)
 
 (defvar journalctl-list-of-parameters
-  ("x" "b" "k" "S" "U" "l" "a" "e" "n" "r" "o" "x" "q" "m" "t" "u" "p"
+  (("x" "b" "k" "S" "U" "l" "a" "e" "n" "r" "o" "x" "q" "m" "t" "u" "p"
    "F" "M" "D"
    "-since" "-until" "-dmesg" "-boot"
    "-system" "-user"
@@ -146,25 +146,55 @@
    "-merge"
    "-identifier" "-priority"
    "-fields"
-   )
+   ))
   "List of possible parameters to be given to journalctl without the first dash." )
 
-(defun journalctl-check-param ()
- "Check parameters given to journalctl."
-  (interactive)
-  (let  ((list  (split-string journalctl-current-params " -" t "[- ]+")))
+(defun journalctl-check-param (param)
+ "Check parameters (PARAMS)  given to journalctl."
+ (interactive)
+ (let  ((list  (split-string	param " -" t "[- ]+")))
+;	(param-list nil))
     (while list
-      (setq journalctl-param-list (cons (split-string   (car list) "[= ]+" t "\s+") journalctl-param-list))
+      (setq param-list (cons (split-string   (car list) "[= ]+" t "[ ']*") param-list))
       (setq list (cdr list)	)))
-;;  Add function to test the parameters and maybe values
-  )
+  ;;  Add function to test the parameters and maybe values
+  (let ((list param-list))
+     (while  list
+      (let ((this-param (car (car list))))
+    (unless (member  this-param  journalctl-list-of-parameters)
+      (progn
+	;; skip invalid parameter
+	(setq param-list (delete (car list) param-list))
+	(message "Parameter %s is not valid and will be skipped."   this-param))))
+      (setq list (cdr list))))
+     ;; rebuild param string
+     (setq param " ")
+     (while param-list
+       (let ((this-param (car param-list)))
+	 (if (> (length this-param) 1) ;; check if parameter needs a value
+	    (setq param  (concat param "-" (car this-param)
+		     (if (string-equal (substring  (car this-param) 0 1) "-") ;; long or short options
+			 "=" " " );; = or space between parameter and value
+		     (let ((value "'")
+			   (value-chunks (cdr this-param)))
+		       (while value-chunks ;; value may contain spaces -> saved as list
+			 (setq value (concat value (car value-chunks) " "))
+			 (setq value-chunks (cdr value-chunks))) 
+		       (when (string-equal (substring value  -1) " ") (setq value (substring value 0 -1)))
+		       value)
+		     "' "))
+	   ;; else
+	   (setq param (concat param "-" (car this-param)))))
+       (setq param-list (cdr param-list)))
+     (message "%s" param))
 
 
 ;;; Main
-(defun journalctl (&optional flags chunk)
-  "Run journalctl with give FLAGS and present CHUNK of  output in a special buffer."
+(defun journalctl (&optional param chunk)
+  "Run journalctl with give PARAM and present CHUNK of  output in a special buffer."
   (interactive)
-  (let ((param (or flags (read-string "parameter: " "-x  -n 1000" nil "-x "))))
+  (let ((param (or param (read-string "parameter: " "-x  -n 1000" nil "-x "))))
+    (let ((param (journalctl-check-param param)))
     (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " param "|  wc -l"))))
     (let* ((this-chunk (or chunk  0)) ;; if chunk is not explicit given, we assume this first (0) chunk
 	         (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
@@ -184,7 +214,7 @@
       (switch-to-buffer "*journalctl*")
       (setq buffer-read-only t)
       (setq journalctl-current-params param)
-      (journalctl-mode))))
+      (journalctl-mode)))))
 
 
 ;;;;;; Moving and Chunks
