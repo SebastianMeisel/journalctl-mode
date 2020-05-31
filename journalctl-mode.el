@@ -131,29 +131,29 @@
 (defvar journalctl-param-list nil)
 
 (defvar journalctl-list-of-parameters
-  (("x" "b" "k" "S" "U" "l" "a" "e" "n" "r" "o" "x" "q" "m" "t" "u" "p"
+  '("x" "b" "k" "S" "U" "l" "a" "e" "n" "r" "o"  "q" "m" "t" "u" "p"
    "F" "M" "D"
-   "-since" "-until" "-dmesg" "-boot"
-   "-system" "-user"
-   "-unit" "-user-unit"
-   "-directory" "-file" "-machine" "-root"
-   "-no-full" "-full" "all"
-   "-pager-end"
-   "-output"   "-output-fields"
-   "-utc"
-   "-no-hostname"
-   "-catalog" "quiet"
-   "-merge"
-   "-identifier" "-priority"
-   "-fields"
-   ))
+   "since" "until" "dmesg" "boot"
+   "system" "user"
+   "unit" "userunit"
+   "directory" "file" "machine" "root"
+   "nofull" "full" "all"
+   "pagerend"
+   "output"   "outputfields"
+   "utc"
+   "nohostname"
+   "catalog" "quiet"
+   "merge"
+   "identifier" "priority"
+   "fields"
+   )
   "List of possible parameters to be given to journalctl without the first dash." )
 
 (defun journalctl-check-param (param)
- "Check parameters (PARAMS)  given to journalctl."
+ "Check parameters (PARAM)  given to journalctl."
  (interactive)
  (let  ((list  (split-string	param " -" t "[- ]+")))
-;	(param-list nil))
+   (setq param-list nil)
     (while list
       (setq param-list (cons (split-string   (car list) "[= ]+" t "[ ']*") param-list))
       (setq list (cdr list)	)))
@@ -172,22 +172,25 @@
      (while param-list
        (let ((this-param (car param-list)))
 	 (if (> (length this-param) 1) ;; check if parameter needs a value
-	    (setq param  (concat param "-" (car this-param)
-		     (if (string-equal (substring  (car this-param) 0 1) "-") ;; long or short options
-			 "=" " " );; = or space between parameter and value
+	    (setq param  (concat param 
+		     (if (> (string-width (car this-param)) 1) ;; long or short options
+			    (concat "--" (car this-param) "=");; long option with value
+			    (concat "-" (car this-param) " "));; short option with value
 		     (let ((value "'")
 			   (value-chunks (cdr this-param)))
-		       (while value-chunks ;; value may contain spaces -> saved as list
+		       (while value-chunks ;; value may co ntain spaces -> saved as list
 			 (setq value (concat value (car value-chunks) " "))
 			 (setq value-chunks (cdr value-chunks))) 
 		       (when (string-equal (substring value  -1) " ") (setq value (substring value 0 -1)))
 		       value)
 		     "' "))
 	   ;; else
-	   (setq param (concat param "-" (car this-param)))))
+	   (if (> (string-width (car this-param)) 1) ;; long or short options
+	       (setq param (concat param "--" (car this-param) " "))
+	     (setq param (concat param "-" (car this-param) " ")))))
        (setq param-list (cdr param-list)))
      (message "%s" param))
-
+     
 
 ;;; Main
 (defun journalctl (&optional param chunk)
@@ -265,7 +268,7 @@ If BOOT is provided it is the number of the boot-log to be shown."
   (let ((boot-log (or boot (car (split-string
 				 (completing-read "Boot: " (reverse (split-string
 		     (shell-command-to-string "journalctl --list-boots") "[\n]" t " ")) nil t))))))
-    (journalctl (concat "-b " boot-log))))
+    (journalctl (concat "-b '" boot-log "'"))))
 
 (defun journalctl-unit (&optional unit)
   "Select and show journal for UNIT."
