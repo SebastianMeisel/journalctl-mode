@@ -152,11 +152,11 @@
 (defun journalctl-check-opt (opt)
  "Check options (OPT)  given to journalctl."
  (interactive)
+ (let ((opt-list nil))
  (let  ((list  (split-string	opt " -" t "[- ]+")))
-   (setq opt-list nil)
-    (while list
-      (setq opt-list (cons (split-string   (car list) "[= ]+" t "[ ']*") opt-list))
-      (setq list (cdr list)	)))
+   (while list
+     (setq opt-list (cons (split-string   (car list) "[= ]+" t "[ ']*") opt-list))
+     (setq list (cdr list)	)))
   ;;  Add function to test the options and maybe values
   (let ((list opt-list))
      (while  list
@@ -168,11 +168,11 @@
 	(message "Option %s is not valid and will be skipped."   this-opt))))
       (setq list (cdr list))))
      ;; rebuild opt string
-     (setq opt " ")
+     (let (( opt " "))
      (while opt-list
        (let ((this-opt (car opt-list)))
 	 (if (> (length this-opt) 1) ;; check if option needs a value
-	    (setq opt  (concat opt 
+	    (setq opt  (concat opt
 		     (if (> (string-width (car this-opt)) 1) ;; long or short options
 			    (concat "--" (car this-opt) "=");; long option with value
 			    (concat "-" (car this-opt) " "));; short option with value
@@ -180,7 +180,7 @@
 			   (value-chunks (cdr this-opt)))
 		       (while value-chunks ;; value may co ntain spaces -> saved as list
 			 (setq value (concat value (car value-chunks) " "))
-			 (setq value-chunks (cdr value-chunks))) 
+			 (setq value-chunks (cdr value-chunks)))
 		       (when (string-equal (substring value  -1) " ") (setq value (substring value 0 -1)))
 		       value)
 		     "' "))
@@ -189,7 +189,7 @@
 	       (setq opt (concat opt "--" (car this-opt) " "))
 	     (setq opt (concat opt "-" (car this-opt) " ")))))
        (setq opt-list (cdr opt-list)))
-     (message "%s" opt))
+     (message "%s" opt))))
      
 
 ;;; Main
