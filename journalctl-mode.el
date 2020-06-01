@@ -3,8 +3,8 @@
 ;; Copyright © 2020, by Sebastian Meisel
 
 ;; Author: Sebastian Meisel <sebastian.meisel@gmail.com>
-;; Version: 0.8
-;; Created:  Mai 23, 2020
+;; Version: 0.9
+;; Created:  June 1, 2020
 ;; Keywords: unix
 ;; Homepage: https://github.com/SebastianMeisel/journalctl-mode
 ;; Package-Requires: ((emacs "24.1"))
@@ -151,15 +151,9 @@
  (interactive)
  (let ((opt-list nil))
  (let  ((list  (split-string	opt " -" t "[- ]+")))
-<<<<<<< HEAD
-   (while list
-     (setq opt-list (cons (split-string   (car list) "[= ]+" t "[ ']*") opt-list))
-     (setq list (cdr list)	)))
-=======
     (while list
       (setq opt-list (cons (split-string   (car list) "[= ]+" t "[ ']*") opt-list))
       (setq list (cdr list))))
->>>>>>> playground
   ;;  Add function to test the options and maybe values
   (let ((list opt-list))
      (while  list
@@ -170,10 +164,6 @@
 	(setq opt-list (delete (car list) opt-list))
 	(message "Option %s is not valid and will be skipped."   this-opt))))
       (setq list (cdr list))))
-<<<<<<< HEAD
-     ;; rebuild opt string
-     (let (( opt " "))
-=======
   ;;set journalctl-current-opts to  opt-list
   (setq journalctl-current-opts opt-list)))
 
@@ -182,7 +172,6 @@
  (interactive)
  (let* ((opt " ")
 	(opt-list journalctl-current-opts))
->>>>>>> playground
      (while opt-list
        (let ((this-opt (car opt-list)))
 	 (if (> (length this-opt) 1) ;; check if option needs a value
@@ -203,11 +192,7 @@
 	       (setq opt (concat opt "--" (car this-opt) " "))
 	     (setq opt (concat opt "-" (car this-opt) " ")))))
        (setq opt-list (cdr opt-list)))
-<<<<<<< HEAD
-     (message "%s" opt))))
-=======
      (message "%s" opt)))
->>>>>>> playground
      
 
 ;;; Main
