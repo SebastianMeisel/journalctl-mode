@@ -31,20 +31,22 @@ At the moment there are to functions provided to call journalctl:
 In journalctl-mode you can navigate between the cunks with "n" (next chunk) and "p" (previous chunk).
 I also redefined C-v and M-v so that it will move to the next chunk, when you have reached the bottom or top of the buffer.
 
-You can add options from journalctl-mode with "+ +". 
+You can add options from journalctl-mode with "+ +" and remove them with "- -". 
 
 There are also some keybindings to add options: 
 
 - "+ r" : Reverse output (--reverse).
 - "+ x": Augment log lines with explanation texts from the message catalog.  (--catalog).
 - "+ s": Show  messages from system services and the kernel  only (--system).
-- "+u": Show messages from service of current user only (--user).
-- "+k": Show kernel message only (--dmesg). This applies "-b".
+- "+ u": Show messages from service of current user only (--user).
+- "+ k": Show kernel message only (--dmesg). This applies "-b".
 
-- "+p"  prompt for priority range and show the respective messages  (--priority).
+- "+ p"  prompt for priority range and show the respective messages  (--priority).
 
-- "+S": Show messages since given date and / or time (--since).
-- "+U": Show messages until given date and / or time (--until).
+- "+ S": Show messages since given date and / or time (--since).
+- "+ U": Show messages until given date and / or time (--until).
+
+When you replace the  "+" with a "-" for each option (like "- r") you remove it.
 
 You can edit the current options with "e".
 
