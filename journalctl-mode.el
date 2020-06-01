@@ -334,7 +334,7 @@ If none is non-nil it will prompt for priority (range)."
   "Keymap for journalctl mode.")
 
 ;;;###autoload
-(define-derived-mode journalctl-mode c-mode "journalctl mode"
+(define-derived-mode journalctl-mode fundamental-mode "journalctl mode"
   "Major mode for viewing journalctl output"
   (setq mode-line-process journalctl-disk-usage)
   ;; code for syntax highlighting
