@@ -23,7 +23,7 @@ in your .emacs file.
 
 At the moment there are to functions provided to call journalctl: 
 
--   journalctl: will ask for commandline parameters like "-xe" and show the output in the  \ast{}journalctl\ast{} buffer.
+-   journalctl: will ask for commandline options like "-xe" and show the output in the  \ast{}journalctl\ast{} buffer.
 - journalctl-boot: will provide you with the list of boots in the journal. You can choose one and view it in the buffer.
 - journalctl-unit: will provide you with the list of units . You can choose one and view related logs  in the buffer.
 - journalctl-user-unit: will provide you with the list of user-units . You can choose one and view related logs  in the buffer.
@@ -31,9 +31,9 @@ At the moment there are to functions provided to call journalctl:
 In journalctl-mode you can navigate between the cunks with "n" (next chunk) and "p" (previous chunk).
 I also redefined C-v and M-v so that it will move to the next chunk, when you have reached the bottom or top of the buffer.
 
-You can add parameters from journalctl-mode with "+ +". 
+You can add options from journalctl-mode with "+ +". 
 
-There are also some keybindings to add parameters: 
+There are also some keybindings to add options: 
 
 - "+ r" : Reverse output (--reverse).
 - "+ x": Augment log lines with explanation texts from the message catalog.  (--catalog).
@@ -46,7 +46,7 @@ There are also some keybindings to add parameters:
 - "+S": Show messages since given date and / or time (--since).
 - "+U": Show messages until given date and / or time (--until).
 
-You can edit the current parameters with "e".
+You can edit the current options with "e".
 
 You can grep on the current output of journalctl with "+ g". You will be asked for a pattern to grep.
 

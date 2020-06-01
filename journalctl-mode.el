@@ -108,12 +108,12 @@
 
 (defvar journalctl-current-lines
   0
-  "Number of lines  of journalctl output with current params.")
+  "Number of lines  of journalctl output with current opts.")
 
 
-(defvar journalctl-current-params
+(defvar journalctl-current-opts
   ""
-  "Keeps the parametes of  the last call of journalctl.")
+  "Keeps the optetes of  the last call of journalctl.")
 
 (defvar journalctl-current-filter
   ""
@@ -127,10 +127,10 @@
 
 ;; functions
 
-;; parameter test
-(defvar journalctl-param-list nil)
+;; option test
+(defvar journalctl-opt-list nil)
 
-(defvar journalctl-list-of-parameters
+(defvar journalctl-list-of-options
   '("x" "b" "k" "S" "U" "l" "a" "e" "n" "r" "o"  "q" "m" "t" "u" "p"
    "F" "M" "D"
    "since" "until" "dmesg" "boot"
@@ -147,37 +147,37 @@
    "identifier" "priority"
    "fields"
    )
-  "List of possible parameters to be given to journalctl without the first dash." )
+  "List of possible options to be given to journalctl without the first dash." )
 
-(defun journalctl-check-param (param)
- "Check parameters (PARAM)  given to journalctl."
+(defun journalctl-check-opt (opt)
+ "Check options (OPT)  given to journalctl."
  (interactive)
- (let  ((list  (split-string	param " -" t "[- ]+")))
-   (setq param-list nil)
+ (let  ((list  (split-string	opt " -" t "[- ]+")))
+   (setq opt-list nil)
     (while list
-      (setq param-list (cons (split-string   (car list) "[= ]+" t "[ ']*") param-list))
+      (setq opt-list (cons (split-string   (car list) "[= ]+" t "[ ']*") opt-list))
       (setq list (cdr list)	)))
-  ;;  Add function to test the parameters and maybe values
-  (let ((list param-list))
+  ;;  Add function to test the options and maybe values
+  (let ((list opt-list))
      (while  list
-      (let ((this-param (car (car list))))
-    (unless (member  this-param  journalctl-list-of-parameters)
+      (let ((this-opt (car (car list))))
+    (unless (member  this-opt  journalctl-list-of-options)
       (progn
-	;; skip invalid parameter
-	(setq param-list (delete (car list) param-list))
-	(message "Parameter %s is not valid and will be skipped."   this-param))))
+	;; skip invalid option
+	(setq opt-list (delete (car list) opt-list))
+	(message "Option %s is not valid and will be skipped."   this-opt))))
       (setq list (cdr list))))
-     ;; rebuild param string
-     (setq param " ")
-     (while param-list
-       (let ((this-param (car param-list)))
-	 (if (> (length this-param) 1) ;; check if parameter needs a value
-	    (setq param  (concat param 
-		     (if (> (string-width (car this-param)) 1) ;; long or short options
-			    (concat "--" (car this-param) "=");; long option with value
-			    (concat "-" (car this-param) " "));; short option with value
+     ;; rebuild opt string
+     (setq opt " ")
+     (while opt-list
+       (let ((this-opt (car opt-list)))
+	 (if (> (length this-opt) 1) ;; check if option needs a value
+	    (setq opt  (concat opt 
+		     (if (> (string-width (car this-opt)) 1) ;; long or short options
+			    (concat "--" (car this-opt) "=");; long option with value
+			    (concat "-" (car this-opt) " "));; short option with value
 		     (let ((value "'")
-			   (value-chunks (cdr this-param)))
+			   (value-chunks (cdr this-opt)))
 		       (while value-chunks ;; value may co ntain spaces -> saved as list
 			 (setq value (concat value (car value-chunks) " "))
 			 (setq value-chunks (cdr value-chunks))) 
@@ -185,20 +185,20 @@
 		       value)
 		     "' "))
 	   ;; else
-	   (if (> (string-width (car this-param)) 1) ;; long or short options
-	       (setq param (concat param "--" (car this-param) " "))
-	     (setq param (concat param "-" (car this-param) " ")))))
-       (setq param-list (cdr param-list)))
-     (message "%s" param))
+	   (if (> (string-width (car this-opt)) 1) ;; long or short options
+	       (setq opt (concat opt "--" (car this-opt) " "))
+	     (setq opt (concat opt "-" (car this-opt) " ")))))
+       (setq opt-list (cdr opt-list)))
+     (message "%s" opt))
      
 
 ;;; Main
-(defun journalctl (&optional param chunk)
-  "Run journalctl with give PARAM and present CHUNK of  output in a special buffer."
+(defun journalctl (&optional opt chunk)
+  "Run journalctl with give OPT and present CHUNK of  output in a special buffer."
   (interactive)
-  (let ((param (or param (read-string "parameter: " "-x  -n 1000" nil "-x "))))
-    (let ((param (journalctl-check-param param)))
-    (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " param "|  wc -l"))))
+  (let ((opt (or opt (read-string "option: " "-x  -n 1000" nil "-x "))))
+    (let ((opt (journalctl-check-opt opt)))
+    (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " opt "|  wc -l"))))
     (let* ((this-chunk (or chunk  0)) ;; if chunk is not explicit given, we assume this first (0) chunk
 	         (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
 	         (last-line (if (<= (+ first-line journalctl-chunk-size)
@@ -210,13 +210,13 @@
         (fundamental-mode)
         (erase-buffer))
       (save-window-excursion
-       (shell-command (concat "journalctl " param journalctl-current-filter
+       (shell-command (concat "journalctl " opt journalctl-current-filter
                               " | sed -ne '"  (int-to-string first-line) ","
                               (int-to-string last-line) "p'")
                       "*journalctl*" "*journalctl-error*"))
       (switch-to-buffer "*journalctl*")
       (setq buffer-read-only t)
-      (setq journalctl-current-params param)
+      (setq journalctl-current-opts opt)
       (journalctl-mode)))))
 
 
@@ -229,14 +229,14 @@
 		    journalctl-current-chunk
 		  (+ journalctl-current-chunk 1) )))
 	(setq journalctl-current-chunk chunk)
-	(journalctl journalctl-current-params  chunk)))
+	(journalctl journalctl-current-opts  chunk)))
 
 (defun journalctl-previous-chunk ()
   "Load the previous chunk of journalctl output to the buffer."
   (interactive)
   (let ((chunk (if (>= journalctl-current-chunk 1) (- journalctl-current-chunk 1) 0)))
 	(setq journalctl-current-chunk chunk)
-	(journalctl journalctl-current-params  chunk)))
+	(journalctl journalctl-current-opts  chunk)))
 
 (defun journalctl-scroll-up ()
   "Scroll up journalctl output or move to next chunk when bottom of frame is reached."
@@ -287,29 +287,29 @@ If BOOT is provided it is the number of the boot-log to be shown."
     (journalctl (concat "--user-unit='" unit "'"))))
 
 
-(defun journalctl-add-param (&optional flags)
-  "Add parameters to journalctl call.
+(defun journalctl-add-opt (&optional flags)
+  "Add options to journalctl call.
 
-If FLAGS is set, use these parameters."
+If FLAGS is set, use these options."
   (interactive)
-  (let ((param (or flags (read-string "parameter: " "" nil ))))
-    (unless (string-match param journalctl-current-params)
-    (setq journalctl-current-params (concat journalctl-current-params  " " param)))
-    (journalctl journalctl-current-params journalctl-current-chunk)))
+  (let ((opt (or flags (read-string "option: " "" nil ))))
+    (unless (string-match opt journalctl-current-opts)
+    (setq journalctl-current-opts (concat journalctl-current-opts  " " opt)))
+    (journalctl journalctl-current-opts journalctl-current-chunk)))
 
 (defun journalctl-add-since (&optional date)
   "Add '--since' option with DATE or ask for date."
   (interactive)
   (let ((date (or  date
 		   		   (if  (fboundp 'org-read-date)  (org-read-date t) (read-string "Date [yy-mm-dd [hh:mm[:ss]]]: ")))))
-     (journalctl-add-param (concat " --since='" date "'"))))
+     (journalctl-add-opt (concat " --since='" date "'"))))
 
 (defun journalctl-add-until (&optional date)
   "Add '--until' option with DATE or ask for date."
   (interactive)
   (let ((date (or  date
 		   (if  (fboundp 'org-read-date)  (org-read-date t) (read-string "Date [yy-mm-dd [hh:mm[:ss]]]: ")))))
-     (journalctl-add-param (concat " --until='" date "'"))))
+     (journalctl-add-opt (concat " --until='" date "'"))))
 
 (defun journalctl-add-priority (&optional priority to-priority)
   "Add '--priority' option with PRIORITY.
@@ -325,29 +325,29 @@ If none is non-nil it will prompt for priority (range)."
 			(or to-priority  (completing-read "Priority: "
 						 '(("emerg" "alert" "crit" "err" "warning" "notice" "info" "debug"))
 						 nil nil priority))))
-	 (param (concat "--priority='" from-priority (when to-priority
+	 (opt (concat "--priority='" from-priority (when to-priority
 						       (unless (string-equal from-priority to-priority) (concat ".." to-priority))) "'")))
-     (journalctl-add-param param)))
+     (journalctl-add-opt opt)))
 
 (defun journalctl-grep (&optional pattern)
   "Run journalctl with -grep flag to search for PATTERN."
   (interactive)
   (let ((pattern (or pattern (read-string "grep pattern: " nil nil ))))
     (setq journalctl-current-filter (concat journalctl-current-filter  "| grep '" pattern "'" ))
-    (journalctl journalctl-current-params journalctl-current-chunk)))
+    (journalctl journalctl-current-opts journalctl-current-chunk)))
 
 (defun journalctl-remove-filter ()
   "Remove all filters such as grep from journalctl output."
   (interactive)
   (setq journalctl-current-filter "")
-    (journalctl journalctl-current-params journalctl-current-chunk))
+    (journalctl journalctl-current-opts journalctl-current-chunk))
   
-(defun  journalctl-edit-params ()
-  "Edit the value of 'journalctl-current-params'."
+(defun  journalctl-edit-opts ()
+  "Edit the value of 'journalctl-current-opts'."
   (interactive)
-  (let ((param (read-string "Parameters: " journalctl-current-params)))
-    (setq journalctl-current-params param)
-    (journalctl journalctl-current-params journalctl-current-chunk)))
+  (let ((opt (read-string "Options: " journalctl-current-opts)))
+    (setq journalctl-current-opts opt)
+    (journalctl journalctl-current-opts journalctl-current-chunk)))
 
 
 ;;;;;;;;;;;;;;;;; Fontlock
@@ -378,18 +378,18 @@ If none is non-nil it will prompt for priority (range)."
   (let ((map (make-keymap "journalctl")))
     (define-key map (kbd "n") 'journalctl-next-chunk)
     (define-key map (kbd "p") 'journalctl-previous-chunk)
-    ;; add params
-    (define-key map (kbd "+ +")  'journalctl-add-param)
-    (define-key map (kbd "+ r")  (lambda () (interactive) (journalctl-add-param "-r" )));; reverse output
-    (define-key map (kbd "+ x")  (lambda () (interactive) (journalctl-add-param "-x" )));; add explanations
-    (define-key map (kbd "+ s")  (lambda () (interactive) (journalctl-add-param "--system" )));; system-units only
-    (define-key map (kbd "+ u")  (lambda () (interactive) (journalctl-add-param "--user" )));; user-units only
-    (define-key map (kbd "+ k")  (lambda () (interactive) (journalctl-add-param "--dmesg" )));; user-units only
+    ;; add opts
+    (define-key map (kbd "+ +")  'journalctl-add-opt)
+    (define-key map (kbd "+ r")  (lambda () (interactive) (journalctl-add-opt "-r" )));; reverse output
+    (define-key map (kbd "+ x")  (lambda () (interactive) (journalctl-add-opt "-x" )));; add explanations
+    (define-key map (kbd "+ s")  (lambda () (interactive) (journalctl-add-opt "--system" )));; system-units only
+    (define-key map (kbd "+ u")  (lambda () (interactive) (journalctl-add-opt "--user" )));; user-units only
+    (define-key map (kbd "+ k")  (lambda () (interactive) (journalctl-add-opt "--dmesg" )));; user-units only
     (define-key map (kbd "+ S")  'journalctl-add-since)
     (define-key map (kbd "+ U")  'journalctl-add-until)
     (define-key  map (kbd "+ p")  'journalctl-add-priority)
-    ;;  edit params
-    (define-key map (kbd "e") 'journalctl-edit-params)
+    ;;  edit opts
+    (define-key map (kbd "e") 'journalctl-edit-opts)
     ;; grep
     (define-key map (kbd "+ g")  'journalctl-grep)
     (define-key map (kbd "- -")  'journalctl-remove-filter)
