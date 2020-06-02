@@ -7,6 +7,8 @@ Fontification is provided and may be customized.
 
 At the moment it is still in very early development. Please give feedback on any problems that occure.
 
+[[./journalctl-mode.08.gif]]
+
 ** Installation  
 
 Clone the project or download journalctl-mode.el and put that file to a load-path.
