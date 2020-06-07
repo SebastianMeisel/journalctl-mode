@@ -142,8 +142,7 @@
    "catalog" "quiet"
    "merge"
    "identifier" "priority"
-   "fields"
-   )
+   "fields" )
   "List of possible options to be given to journalctl without the first dash." )
 
 (defun journalctl-parse-options (opt)
@@ -448,7 +447,7 @@ If OPT is set, remove this option."
   "Keymap for journalctl mode.")
 
 ;;;###autoload
-(define-derived-mode journalctl-mode fundamental-mode "journalctl mode"
+(define-derived-mode journalctl-mode fundamental-mode "journalctl"
   "Major mode for viewing journalctl output"
   (setq mode-line-process journalctl-disk-usage)
   ;; code for syntax highlighting
