@@ -11,7 +11,17 @@ At the moment it is still in very early development. Please give feedback on any
 
 ** Installation  
 
-Clone the project or download journalctl-mode.el and put that file to a load-path.
+*** With use-package
+
+You can install `journalctl-mode` from MELPA, for example with:
+#+BEGIN_SRC  emacs-lisp
+(use-package journalctl-mode
+:ensure t)
+#+END_SRC
+
+*** Manual
+
+Clone the project or download `journalctl-mode.el` and put that file to a load-path.
 
 Put  
 down 
