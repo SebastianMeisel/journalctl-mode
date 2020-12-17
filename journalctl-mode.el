@@ -264,6 +264,35 @@ If OPT is t the options in 'journalctl-current-opts' are taken."
       (forward-line  -25)))
 
 ;;;;;;;; Special functions
+;;;###autoload
+(defun journalctl-boot (&optional boot)
+  "Select and show boot-log.
+
+If BOOT is provided it is the number of the boot-log to be shown."
+  (interactive)
+  (let ((boot-log (or boot (car (split-string
+				 (completing-read "Boot: " (reverse (split-string
+		     (shell-command-to-string "journalctl --list-boots") "[\n]" t " ")) nil t))))))
+    (journalctl (concat "-b '" boot-log "'"))))
+
+;;;###autoload
+(defun journalctl-unit (&optional unit)
+  "Select and show journal for UNIT."
+  (interactive)
+  (let ((unit (or unit (car (split-string
+				 (completing-read "unit: " (split-string
+		     (shell-command-to-string "systemctl list-units --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
+    (journalctl (concat "--unit='" unit "'"))))
+
+;;;###autoload
+(defun journalctl-user-unit (&optional unit)
+  "Select and show journal for the user-unit UNIT."
+  (interactive)
+  (let ((unit (or unit (car (split-string
+				 (completing-read "unit: " (split-string
+		     (shell-command-to-string "systemctl list-units --all --user --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
+    (journalctl (concat "--user-unit='" unit "'"))))
+
 
 (defun journalctl-add-opt (&optional opt)
   "Add options to journalctl call.
@@ -420,33 +449,6 @@ If OPT is set, remove this option."
   "Keymap for journalctl mode.")
 
 ;;;###autoload
-(defun journalctl-boot (&optional boot)
-  "Select and show boot-log.
-
-If BOOT is provided it is the number of the boot-log to be shown."
-  (interactive)
-  (let ((boot-log (or boot (car (split-string
-				 (completing-read "Boot: " (reverse (split-string
-		     (shell-command-to-string "journalctl --list-boots") "[\n]" t " ")) nil t))))))
-    (journalctl (concat "-b '" boot-log "'"))))
-
-(defun journalctl-unit (&optional unit)
-  "Select and show journal for UNIT."
-  (interactive)
-  (let ((unit (or unit (car (split-string
-				 (completing-read "unit: " (split-string
-		     (shell-command-to-string "systemctl list-units --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
-    (journalctl (concat "--unit='" unit "'"))))
-
-(defun journalctl-user-unit (&optional unit)
-  "Select and show journal for the user-unit UNIT."
-  (interactive)
-  (let ((unit (or unit (car (split-string
-				 (completing-read "unit: " (split-string
-		     (shell-command-to-string "systemctl list-units --all --user --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
-    (journalctl (concat "--user-unit='" unit "'"))))
-
-
 (define-derived-mode journalctl-mode fundamental-mode "journalctl"
   "Major mode for viewing journalctl output"
   (setq mode-line-process journalctl-disk-usage)
