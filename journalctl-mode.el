@@ -131,11 +131,12 @@
   ""
   "Keeps filters as grep that shall be applied to journalctl's output.")
 
-(defvar journalctl-disk-usage
-  (concat
-   "Disk-usage: "
-   (shell-command-to-string "journalctl --disk-usage | egrep -o '[0-9.]+G'"))
-  "Disk-usage of  journalctl.")
+(defun journalctl--disk-usage ()
+  "Disk-usage of journalctl."
+  (let ((cmd-out (shell-command-to-string "journalctl --disk-usage")))
+    (if (string-match "[0-9.]+G" cmd-out)
+        (match-string 0 cmd-out)
+      "0G")))
 
 ;; functions
 
@@ -463,7 +464,7 @@ If OPT is set, remove this option."
 ;;;###autoload
 (define-derived-mode journalctl-mode fundamental-mode "journalctl"
   "Major mode for viewing journalctl output"
-  (setq mode-line-process journalctl-disk-usage)
+  (setq mode-line-process (concat " (disk usage: " (journalctl--disk-usage) ")"))
   ;; code for syntax highlighting
   (setq font-lock-defaults '((journalctl-font-lock-keywords))))
 
