@@ -1,4 +1,16 @@
-;;; journalctl-mode.el --- Sample major mode for  viewing output journalctl -*- coding: utf-8; lexical-binding: t; -*-
+;; -*- coding: utf-8; lexical-binding: t; -*-
+#+TITLE: journalctl-mode
+#+AUTHOR: Sebastian Meisel
+#+DATE: <2023-06-07 Mi>
+#+BABEL: :cache yes
+#+PROPERTY: header-args :tangle tesseract.el :results silent auto-tangle: yes
+
+* General
+
+** Header
+
+#+BEGIN_SRC emacs-lisp
+;;; journalctl-mode.el --- Sample major mode for  viewing output journalctl 
 
 ;; Copyright © 2020, by Sebastian Meisel
 
@@ -10,7 +22,11 @@
 ;; Package-Requires: ((emacs "24.1"))
 
 ;; This file is not part of GNU Emacs.
+#+END_SRC
 
+** Licence
+
+#+BEGIN_SRC emacs-lisp
 ;;; License:
 
 ;; This file is free software: you can redistribute it and/or modify
@@ -26,7 +42,11 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this file.  If not, see <https://www.gnu.org/licenses/>.
 
+#+END_SRC
 
+** Commentary
+
+#+BEGIN_SRC emacs-lisp
 ;;; Commentary:
 
 ;; This is a major-mode for Emacs to view systemd's journalctl output in Emacs.
@@ -36,19 +56,41 @@
 
 ;; Put journalctl-mode.el in your load-path and add   ( require 'journalctl-mode)  to your .emacs file.
 
+#+END_SRC
+
+* Code
+** TODO Requirements -> Add Transient
+
+This library provides functions and utilities related to array manipulation and handling in Emacs Lisp programs:
+
+#+BEGIN_SRC emacs-lisp
 ;;; Code:
 
 (require 'array)
 
+#+END_SRC
+
+** Customization
+
+ - (defgroup journalctl nil ...) creates a customization group named "journalctl" within Emacs. It provides a grouping for related customization options.
+ - (defcustom journalctl-chunk-size ...) defines a customizable variable named "journalctl-chunk-size" which determines the number of lines of journalctl output loaded in the buffer at a time. The value can be adjusted to control the navigation within the output.
+ - (defcustom journalctl-error-keywords ...) defines a customizable variable named "journalctl-error-keywords" that contains a list of keywords representing errors in journalctl output.
+ - (defcustom journalctl-warn-keywords ...) defines a customizable variable named "journalctl-warn-keywords" that contains a list of keywords representing warnings in journalctl output.
+ - (defcustom journalctl-starting-keywords ...) defines a customizable variable named "journalctl-starting-keywords" that contains a list of keywords indicating the start of processes or steps in journalctl output.
+ - (defcustom journalctl-finished-keywords ...) defines a customizable variable named "journalctl-finished-keywords" that contains a list of keywords indicating the completion of processes or steps in journalctl output.
+
+
+#+BEGIN_SRC emacs-lisp
 ;; customization
 
 (defgroup journalctl nil
-  "View journalctl output in a emacs buffer"
+  "View journalctl output in a emacs buffer."
   :group 'external)
 
 (defcustom journalctl-chunk-size
   250
- "Number of lines of journalctl output that are loaded in the buffer.  You can navigate."
+ "Number of lines of journalctl output that are loaded in the buffer.
+ You can navigate."
   :group 'journalctl
   :type 'integer)
   
@@ -77,6 +119,11 @@
   :group 'journalctl
   :type 'string)
 
+#+END_SRC
+
+*** Faces
+
+#+BEGIN_SRC emacs-lisp
 ;;; faces
 (defface journalctl-error-face
   '((t :inherit error))
@@ -113,7 +160,13 @@
   "Face for hosts in journalctl's output."
   :group 'journalctl)
 
-;; variables
+#+END_SRC
+
+** Allgemeine Variablen
+
+The following  variables facilitate the management and tracking of journalctl output within the journalctl-buffer in Emacs, providing control over the loaded chunks, line counts, previous options, and applied filters:
+
+#+BEGIN_SRC emacs-lisp
 (defvar journalctl-current-chunk
   0
   "Counter for chunks of journalctl output loaded into the *journalctl*-buffer.")
@@ -125,11 +178,21 @@
 
 (defvar journalctl-current-opts
   ""
-  "Keeps the optetes of  the last call of journalctl.")
+  "Keeps the options of  the last call of journalctl.")
 
 (defvar journalctl-current-filter
   ""
   "Keeps filters as grep that shall be applied to journalctl's output.")
+
+#+END_SRC
+
+** Functions
+*** Disk Usage
+
+=journalctl--disk-usage=  retrieves the disk usage information of the journalctl command. It executes the shell command "journalctl --disk-usage" and captures the output using "shell-command-to-string." If the output contains a match for a pattern resembling a disk usage value (in gigabytes), it extracts and returns that value. Otherwise, it returns "0G" to indicate no disk usage:
+
+#+BEGIN_SRC emacs-lisp
+;; functions
 
 (defun journalctl--disk-usage ()
   "Disk-usage of journalctl."
@@ -137,9 +200,12 @@
     (if (string-match "[0-9.]+G" cmd-out)
         (match-string 0 cmd-out)
       "0G")))
+#+END_SRC
 
-;; functions
+*** TODO Option handling -> Tansient
+**** List of Options
 
+#+BEGIN_SRC emacs-lisp
 (defvar journalctl-list-of-options
   '("x" "b" "k" "S" "U" "l" "a" "e" "n" "r" "o"  "q" "m" "t" "u" "p"
    "F" "M" "D"
@@ -157,7 +223,20 @@
    "identifier" "priority"
    "fields" )
   "List of possible options to be given to journalctl without the first dash." )
+#+END_SRC
 
+**** Add Options
+
+=journalctl-parse-options=  takes an argument =opt= representing the options provided to the =journalctl= command. Here's a description using a list:
+
+1. *Splitting options*: The function splits the options string using spaces and hyphens as delimiters and constructs a list of parsed options. Each option is further split using regular expressions to extract the option name and its possible value.
+2. *Validating options*: The function checks each option against a predefined list named =journalctl-list-of-options=. If an option is not valid, it is removed from the list of parsed options. This ensures that only valid options remain in the list.
+3. *Error message*: If an invalid option is found, a message is displayed indicating that the option will be skipped. This provides feedback to the user regarding invalid options.
+4. *Setting variable*: The function sets the variable =journalctl-current-opts= to the parsed and validated options list. This allows the options to be accessed and utilized later in the code.
+
+By performing these steps, the =journalctl-parse-options= function provides a mechanism to parse, validate, and store the options provided to the journalctl command, ensuring that only valid options are considered for further processing.
+
+#+BEGIN_SRC emacs-lisp
 (defun journalctl-parse-options (opt)
  "Parse options (OPT)  given to journalctl."
  (interactive)
@@ -179,6 +258,19 @@
   ;;set journalctl-current-opts to  opt-list
   (setq journalctl-current-opts opt-list)))
 
+#+END_SRC
+
+=journalctl-unparse-options= that converts a list of options into a string format suitable for the journalctl command. Here's a description using a list:
+
+1. *Initialization*: The function initializes the variable =opt= with a space character to start building the output string. It also assigns the list of options from the variable =journalctl-current-opts= to =opt-list= for processing.
+2. *Iterating over options*: The function iterates over each option in the =opt-list= using a while loop.
+3. *Handling options with values*: For options that require a value, the function checks the length of the option name to determine if it is a long or short option. It constructs the appropriate format by appending the option name with an equal sign for long options or a space for short options. The option value is processed by concatenating each value chunk, separated by spaces. The value is enclosed in single quotes.
+4. *Concatenating options*: The function concatenates each processed option to the =opt= string.
+5. *Handling options without values*: For options that do not require a value, the function checks the length of the option name to determine if it is a long or short option. It appends the option name with two dashes for long options or one dash for short options.
+6. *Displaying the result*: The function displays the resulting =opt= string using the =message= function.
+
+
+#+BEGIN_SRC emacs-lisp
 (defun journalctl-unparse-options ()
  "Join options to  a string, this is given to  journalctl."
  (interactive)
@@ -205,108 +297,11 @@
 	     (setq opt (concat opt "-" (car this-opt) " ")))))
        (setq opt-list (cdr opt-list)))
      (message "%s" opt)))
-     
 
-;;; Main
-(defun journalctl (&optional opt chunk)
- "Run journalctl with give OPT and present CHUNK of  output in a special buffer.
-If OPT is t the options in 'journalctl-current-opts' are taken."
-  (interactive)
-  (unless (eq opt t)
-  (let ((opt (or opt (read-string "option: " "-x  -n 1000" nil "-x "))))
-    (journalctl-parse-options opt)))
-    (let ((opt (journalctl-unparse-options)))
-    (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " opt "|  wc -l"))))
-    (let* ((this-chunk (or chunk  0)) ;; if chunk is not explicit given, we assume this first (0) chunk
-	         (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
-	         (last-line (if (<= (+ first-line journalctl-chunk-size)
-                              journalctl-current-lines)
-			                    (+ first-line journalctl-chunk-size)
-		                    journalctl-current-lines)))
-      (with-current-buffer (get-buffer-create "*journalctl*")
-        (setq buffer-read-only nil)
-        (fundamental-mode)
-        (erase-buffer))
-      (save-window-excursion
-       (shell-command (concat "journalctl " opt journalctl-current-filter
-                              " | sed -ne '"  (int-to-string first-line) ","
-                              (int-to-string last-line) "p'")
-                      "*journalctl*" "*journalctl-error*"))
-      (switch-to-buffer "*journalctl*")
-      (setq buffer-read-only t)
-;;      (setq journalctl-current-opts opt)
-      (journalctl-mode))))
+#+END_SRC
 
-
-;;;;;; Moving and Chunks
-
-(defun journalctl-next-chunk ()
-  "Load the next chunk of journalctl output to the buffer."
-  (interactive)
-  (let* ((chunk (if  (> (* (+ 2 journalctl-current-chunk) journalctl-chunk-size) journalctl-current-lines)
-		    journalctl-current-chunk
-		  (+ journalctl-current-chunk 1) )))
-	(setq journalctl-current-chunk chunk)
-	(journalctl t  chunk)))
-
-(defun journalctl-previous-chunk ()
-  "Load the previous chunk of journalctl output to the buffer."
-  (interactive)
-  (let ((chunk (if (>= journalctl-current-chunk 1) (- journalctl-current-chunk 1) 0)))
-	(setq journalctl-current-chunk chunk)
-	(journalctl t  chunk)))
-
-(defun journalctl-scroll-up ()
-  "Scroll up journalctl output or move to next chunk when bottom of frame is reached."
-  (interactive)
-  (let ((target-line  (+ (current-line) 25)))
-    (if (>= target-line journalctl-current-lines)
-	(message "%s" "End of journalctl output")
-      (if (>= target-line journalctl-chunk-size)
-	(journalctl-next-chunk)
-      (forward-line 25)))))
-
-(defun journalctl-scroll-down ()
-  "Scroll down journalctl output or move to next chunk when bottom of frame is reached."
-  (interactive)
-  (let ((target-line  (- (current-line) 25)))
-    (if (<= target-line 0)
-	(if (<=  journalctl-current-chunk 0)
-	    	(message "%s" "Beginn of journalctl output")
-	(journalctl-previous-chunk)))
-      (forward-line  -25)))
-
-;;;;;;;; Special functions
-;;;###autoload
-(defun journalctl-boot (&optional boot)
-  "Select and show boot-log.
-
-If BOOT is provided it is the number of the boot-log to be shown."
-  (interactive)
-  (let ((boot-log (or boot (car (split-string
-				 (completing-read "Boot: " (reverse (split-string
-		     (shell-command-to-string "journalctl --list-boots") "[\n]" t " ")) nil t))))))
-    (journalctl (concat "-b '" boot-log "'"))))
-
-;;;###autoload
-(defun journalctl-unit (&optional unit)
-  "Select and show journal for UNIT."
-  (interactive)
-  (let ((unit (or unit (car (split-string
-				 (completing-read "unit: " (split-string
-		     (shell-command-to-string "systemctl list-units --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
-    (journalctl (concat "--unit='" unit "'"))))
-
-;;;###autoload
-(defun journalctl-user-unit (&optional unit)
-  "Select and show journal for the user-unit UNIT."
-  (interactive)
-  (let ((unit (or unit (car (split-string
-				 (completing-read "unit: " (split-string
-		     (shell-command-to-string "systemctl list-units --all --user --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
-    (journalctl (concat "--user-unit='" unit "'"))))
-
-
+**** TODO Adding and removing options -> Transient
+#+BEGIN_SRC emacs-lisp
 (defun journalctl-add-opt (&optional opt)
   "Add options to journalctl call.
 
@@ -336,6 +331,9 @@ If OPT is set, use these options."
     (setq journalctl-current-opts  (append opt-list journalctl-current-opts)))
     (journalctl t journalctl-current-chunk))
 
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
 (defun journalctl-add-since (&optional date)
   "Add '--since' option with DATE or ask for date."
   (interactive)
@@ -351,6 +349,9 @@ If OPT is set, use these options."
 		   (if  (fboundp 'org-read-date)  (org-read-date t) (read-string "Date [yy-mm-dd [hh:mm[:ss]]]: ")))))
      (journalctl-add-opt (concat " --until='" date "'"))))
 
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
 (defun journalctl-add-priority (&optional priority to-priority)
   "Add '--priority' option with PRIORITY.
 If TO-PRIORITY is non-nil, call '--priority' with range
@@ -369,6 +370,9 @@ If none is non-nil it will prompt for priority (range)."
 						       (unless (string-equal from-priority to-priority) (concat ".." to-priority))) "'")))
      (journalctl-add-opt opt)))
 
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
 (defun journalctl-remove-opt (&optional opt)
   "Remove option from journalctl call.
 
@@ -380,6 +384,9 @@ If OPT is set, remove this option."
       (setq journalctl-current-opts (delq (assoc opt journalctl-current-opts) journalctl-current-opts))))
     (journalctl t journalctl-current-chunk))
 
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
 (defun journalctl-grep (&optional pattern)
   "Run journalctl with -grep flag to search for PATTERN."
   (interactive)
@@ -387,12 +394,18 @@ If OPT is set, remove this option."
     (setq journalctl-current-filter (concat journalctl-current-filter  "| grep '" pattern "'" ))
     (journalctl journalctl-current-opts journalctl-current-chunk)))
 
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
 (defun journalctl-remove-filter ()
   "Remove all filters such as grep from journalctl output."
   (interactive)
   (setq journalctl-current-filter "")
     (journalctl journalctl-current-opts journalctl-current-chunk))
+
+#+END_SRC
   
+#+BEGIN_SRC emacs-lisp
 (defun  journalctl-edit-opts ()
   "Edit the value of 'journalctl-current-opts'."
   (interactive)
@@ -400,10 +413,133 @@ If OPT is set, remove this option."
     (journalctl-parse-options opt)
     (journalctl t journalctl-current-chunk)))
 
+#+END_SRC
 
-;;;;;;;;;;;;;;;;; Fontlock
+*** Main function
 
+#+BEGIN_SRC emacs-lisp
+(defun journalctl (&optional opt chunk)
+ "Run journalctl with give OPT and present CHUNK of  output in a special buffer.
+If OPT is t the options in 'journalctl-current-opts' are taken."
+  (interactive)
+  (unless (eq opt t)
+  (let ((opt (or opt (read-string "option: " "-x  -n 1000" nil "-x "))))
+    (journalctl-parse-options opt)))
+    (let ((opt (journalctl-unparse-options)))
+    (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " opt "|  wc -l"))))
+    (let* ((this-chunk (or chunk  0)) ;; if chunk is not explicit given, we assume this first (0) chunk
+	         (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
+	         (last-line (if (<= (+ first-line journalctl-chunk-size)
+                              journalctl-current-lines)
+			                    (+ first-line journalctl-chunk-size)
+		                    journalctl-current-lines)))
+      (with-current-buffer (get-buffer-create "*journalctl*")
+        (setq buffer-read-only nil)
+        (fundamental-mode)
+        (erase-buffer))
+      (save-window-excursion
+       (shell-command (concat "journalctl " opt journalctl-current-filter
+                              " | sed -ne '"  (int-to-string first-line) ","
+                              (int-to-string last-line) "p'")
+                      "*journalctl*" "*journalctl-error*"))
+      (switch-to-buffer "*journalctl*")
+      (setq buffer-read-only t)
+;;      (setq journalctl-current-opts opt)
+      (journalctl-mode))))
+#+END_SRC
 
+*** Moving and Chunk
+
+#+BEGIN_SRC emacs-lisp
+(defun journalctl-next-chunk ()
+  "Load the next chunk of journalctl output to the buffer."
+  (interactive)
+  (let* ((chunk (if  (> (* (+ 2 journalctl-current-chunk) journalctl-chunk-size) journalctl-current-lines)
+		    journalctl-current-chunk
+		  (+ journalctl-current-chunk 1) )))
+	(setq journalctl-current-chunk chunk)
+	(journalctl t  chunk)))
+
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(defun journalctl-previous-chunk ()
+  "Load the previous chunk of journalctl output to the buffer."
+  (interactive)
+  (let ((chunk (if (>= journalctl-current-chunk 1) (- journalctl-current-chunk 1) 0)))
+	(setq journalctl-current-chunk chunk)
+	(journalctl t  chunk)))
+
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(defun journalctl-scroll-up ()
+  "Scroll up journalctl output or move to next chunk when bottom of frame is reached."
+  (interactive)
+  (let ((target-line  (+ (current-line) 25)))
+    (if (>= target-line journalctl-current-lines)
+	(message "%s" "End of journalctl output")
+      (if (>= target-line journalctl-chunk-size)
+	(journalctl-next-chunk)
+      (forward-line 25)))))
+
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(defun journalctl-scroll-down ()
+  "Scroll down journalctl output or move to next chunk when bottom of frame is reached."
+  (interactive)
+  (let ((target-line  (- (current-line) 25)))
+    (if (<= target-line 0)
+	(if (<=  journalctl-current-chunk 0)
+	    	(message "%s" "Beginn of journalctl output")
+	(journalctl-previous-chunk)))
+      (forward-line  -25)))
+
+#+END_SRC
+
+*** Functions for special purposes
+
+#+BEGIN_SRC emacs-lisp
+;;;###autoload
+(defun journalctl-boot (&optional boot)
+  "Select and show boot-log.
+
+If BOOT is provided it is the number of the boot-log to be shown."
+  (interactive)
+  (let ((boot-log (or boot (car (split-string
+				 (completing-read "Boot: " (reverse (split-string
+		     (shell-command-to-string "journalctl --list-boots") "[\n]" t " ")) nil t))))))
+    (journalctl (concat "-b '" boot-log "'"))))
+
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+;;;###autoload
+(defun journalctl-unit (&optional unit)
+  "Select and show journal for UNIT."
+  (interactive)
+  (let ((unit (or unit (car (split-string
+				 (completing-read "unit: " (split-string
+		     (shell-command-to-string "systemctl list-units --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
+    (journalctl (concat "--unit='" unit "'"))))
+
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+;;;###autoload
+(defun journalctl-user-unit (&optional unit)
+  "Select and show journal for the user-unit UNIT."
+  (interactive)
+  (let ((unit (or unit (car (split-string
+				 (completing-read "unit: " (split-string
+		     (shell-command-to-string "systemctl list-units --all --user --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
+    (journalctl (concat "--user-unit='" unit "'"))))
+
+#+END_SRC
+
+** Fontlock
+#+BEGIN_SRC emacs-lisp
 (defvar journalctl-font-lock-keywords
       (let* (
             ;; generate regex string for each category of keywords
@@ -423,7 +559,10 @@ If OPT is set, remove this option."
           ;; note: order above matters, because once colored, that part won't change.
           ;; in general, put longer words first
           )))
+#+END_SRC
 
+** TODO Keymap -> Transient
+#+BEGIN_SRC emacs-lisp
 ;; keymap
 (defvar journalctl-mode-map
   (let ((map (make-keymap "journalctl")))
@@ -460,7 +599,10 @@ If OPT is set, remove this option."
     (define-key map (kbd "q")  (lambda () (interactive) (kill-buffer  "*journalctl*")))
     map)
   "Keymap for journalctl mode.")
+#+END_SRC
 
+** Mode
+#+BEGIN_SRC emacs-lisp
 ;;;###autoload
 (define-derived-mode journalctl-mode fundamental-mode "journalctl"
   "Major mode for viewing journalctl output"
@@ -468,8 +610,16 @@ If OPT is set, remove this option."
   ;; code for syntax highlighting
   (setq font-lock-defaults '((journalctl-font-lock-keywords))))
 
-
 ;; add the mode to the `features' list
 (provide 'journalctl-mode)
+  #+END_SRC
+
+* Footer
+#+BEGIN_SRC emacs-lisp
 
 ;;; journalctl-mode.el ends here
+#+END_SRC
+
+# Local Variables:
+# jinx-languages: "en_US"
+# End:
