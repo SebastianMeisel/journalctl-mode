@@ -145,7 +145,7 @@
    "F" "M" "D"
    "since" "until" "dmesg" "boot"
    "system" "user"
-   "unit" "userunit"
+   "unit" "user-unit"
    "directory" "file" "machine" "root"
    "nofull" "full" "all"
    "pagerend"
