@@ -39,6 +39,7 @@
 ;;; Code:
 
 (require 'array)
+(require 'transient)
 
 ;; customization
 
@@ -139,104 +140,44 @@
       "0G")))
 
 ;; functions
+(transient-define-infix journalctl-transient:--lines ()
+		       :description "Limit the number of events shown."
+		       :class 'transient-option
+		       :shortarg "-n"
+		       :argument "--lines="
+		       )
 
-(defvar journalctl-list-of-options
-  '("x" "b" "k" "S" "U" "l" "a" "e" "n" "r" "o"  "q" "m" "t" "u" "p"
-   "F" "M" "D"
-   "since" "until" "dmesg" "boot"
-   "system" "user"
-   "unit" "user-unit"
-   "directory" "file" "machine" "root"
-   "nofull" "full" "all"
-   "pagerend"
-   "output"   "outputfields"
-   "utc"
-   "nohostname"
-   "catalog" "quiet"
-   "merge"
-   "identifier" "priority"
-   "fields" )
-  "List of possible options to be given to journalctl without the first dash." )
+(transient-define-prefix journalctl-transient ()
+  "Transient for journalctl."
+  ["Parameter"
+   ("x" "Augment log lines with explanation texts from the message catalog." "--catalog")
+   (journalctl-transient:--lines)]
+  ["Aufruf"
+   ("RET" "Standard" journalctl)
+   ("b" "--boot" journalctl-boot)
+   ])
 
-(defun journalctl-parse-options (opt)
- "Parse options (OPT)  given to journalctl."
- (interactive)
- (let ((opt-list nil))
- (let  ((list  (split-string	opt " -" t "[- ]+")))
-    (while list
-      (setq opt-list (cons (split-string   (car list) "[= ]+" t "[ ']*") opt-list))
-      (setq list (cdr list))))
-  ;;  Add function to test the options and maybe values
-  (let ((list opt-list))
-     (while  list
-      (let ((this-opt (car (car list))))
-    (unless (member  this-opt  journalctl-list-of-options)
-      (progn
-	;; skip invalid option
-	(setq opt-list (delete (car list) opt-list))
-	(message "Option %s is not valid and will be skipped."   this-opt))))
-      (setq list (cdr list))))
-  ;;set journalctl-current-opts to  opt-list
-  (setq journalctl-current-opts opt-list)))
 
-(defun journalctl-unparse-options ()
- "Join options to  a string, this is given to  journalctl."
- (interactive)
- (let* ((opt " ")
-	(opt-list journalctl-current-opts))
-     (while opt-list
-       (let ((this-opt (car opt-list)))
-	 (if (> (length this-opt) 1) ;; check if option needs a value
-	    (setq opt  (concat opt
-		     (if (> (string-width (car this-opt)) 1) ;; long or short options
-			    (concat "--" (car this-opt) "=");; long option with value
-			    (concat "-" (car this-opt) " "));; short option with value
-		     (let ((value "'")
-			   (value-chunks (cdr this-opt)))
-		       (while value-chunks ;; value may co ntain spaces -> saved as list
-			 (setq value (concat value (car value-chunks) " "))
-			 (setq value-chunks (cdr value-chunks)))
-		       (when (string-equal (substring value  -1) " ") (setq value (substring value 0 -1)))
-		       value)
-		     "' "))
-	   ;; else
-	   (if (> (string-width (car this-opt)) 1) ;; long or short options
-	       (setq opt (concat opt "--" (car this-opt) " "))
-	     (setq opt (concat opt "-" (car this-opt) " ")))))
-       (setq opt-list (cdr opt-list)))
-     (message "%s" opt)))
-     
-
-;;; Main
-(defun journalctl (&optional opt chunk)
- "Run journalctl with give OPT and present CHUNK of  output in a special buffer.
-If OPT is t the options in 'journalctl-current-opts' are taken."
-  (interactive)
-  (unless (eq opt t)
-  (let ((opt (or opt (read-string "option: " "-x  -n 1000" nil "-x "))))
-    (journalctl-parse-options opt)))
-    (let ((opt (journalctl-unparse-options)))
-    (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " opt "|  wc -l"))))
-    (let* ((this-chunk (or chunk  0)) ;; if chunk is not explicit given, we assume this first (0) chunk
-	         (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
-	         (last-line (if (<= (+ first-line journalctl-chunk-size)
-                              journalctl-current-lines)
-			                    (+ first-line journalctl-chunk-size)
-		                    journalctl-current-lines)))
+(defun journalctl (transient-opts &optional chunk)
+  "Run journalctl with given TRANSIENT-OPTS and present CHUNK of output in a special buffer."
+  (interactive (list (transient-args 'journalctl-transient)))
+  (let ((opts (mapconcat 'identity transient-opts " ")))
+    (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " opts "| wc -l"))))
+    (let* ((this-chunk (or chunk 0)) ;; if chunk is not explicitly given, we assume the first (0) chunk
+           (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
+           (last-line (if (<= (+ first-line journalctl-chunk-size) journalctl-current-lines)
+                          (+ first-line journalctl-chunk-size)
+                        journalctl-current-lines)))
       (with-current-buffer (get-buffer-create "*journalctl*")
         (setq buffer-read-only nil)
         (fundamental-mode)
         (erase-buffer))
       (save-window-excursion
-       (shell-command (concat "journalctl " opt journalctl-current-filter
-                              " | sed -ne '"  (int-to-string first-line) ","
-                              (int-to-string last-line) "p'")
+       (shell-command (concat "journalctl " opts " | sed -ne '" (int-to-string first-line) "," (int-to-string last-line) "p'")
                       "*journalctl*" "*journalctl-error*"))
       (switch-to-buffer "*journalctl*")
       (setq buffer-read-only t)
-;;      (setq journalctl-current-opts opt)
       (journalctl-mode))))
-
 
 ;;;;;; Moving and Chunks
 
@@ -278,15 +219,15 @@ If OPT is t the options in 'journalctl-current-opts' are taken."
 
 ;;;;;;;; Special functions
 ;;;###autoload
-(defun journalctl-boot (&optional boot)
+(defun journalctl-boot (transient-opts &optional boot)
   "Select and show boot-log.
 
 If BOOT is provided it is the number of the boot-log to be shown."
-  (interactive)
+  (interactive (list (transient-args 'journalctl-transient)))
   (let ((boot-log (or boot (car (split-string
 				 (completing-read "Boot: " (reverse (split-string
 		     (shell-command-to-string "journalctl --list-boots") "[\n]" t " ")) nil t))))))
-    (journalctl (concat "-b '" boot-log "'"))))
+    (journalctl (list (concat "--boot='" boot-log "'") (flatten-list transient-opts)))))
 
 ;;;###autoload
 (defun journalctl-unit (&optional unit)
