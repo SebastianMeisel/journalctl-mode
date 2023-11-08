@@ -23,7 +23,7 @@
       :quelpa (journalctl-mode
                :fetcher github
                :repo "SebastianMeisel/journalctl-mode"
-               :branch "dev"
+               :branch "transient"
                :upgrade t)
       :ensure t)
   #+END_SRC
