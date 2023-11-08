@@ -49,7 +49,8 @@
 
 (defcustom journalctl-chunk-size
   250
- "Number of lines of journalctl output that are loaded in the buffer.  You can navigate."
+  "Number of lines of journalctl output that are loaded in the buffer.
+   You can navigate."
   :group 'journalctl
   :type 'integer)
   
@@ -433,7 +434,7 @@ of the journal entries that are shown.")
   (interactive)
   (let ((args (transient-args (oref transient-current-prefix command)))
 	(follow-args (concat "--lines=" journalctl-follow-lines " -e")))
-    (add-to-list 'args follow-args)
+    (cl-pushnew follow-args 'args)
     (setq journalctl-follow-timer
 	  (run-with-timer journalctl-follow-freq journalctl-follow-freq
 			  'journalctl--run args journalctl-current-chunk))))
@@ -457,7 +458,8 @@ of the journal entries that are shown.")
 ;; 		   opt-list))))
 
 (defun journalctl--run (transient-opts &optional chunk)
-  "Run journalctl with given TRANSIENT-OPTS and present CHUNK of output in a special buffer."
+  "Run journalctl with given TRANSIENT-OPTS
+   and present CHUNK of output in a special buffer."
   (interactive (list (transient-args 'journalctl-transient)))
   (setq journalctl-current-opts transient-opts)
   (let* ((opts (mapconcat 'identity transient-opts " "))
@@ -498,7 +500,8 @@ of the journal entries that are shown.")
 	(journalctl--run journalctl-current-opts chunk)))
 
 (defun journalctl-scroll-up ()
-  "Scroll up journalctl output or move to next chunk when bottom of frame is reached."
+  "Scroll up journalctl output or move to next chunk
+   when bottom of frame is reached."
   (interactive)
   (let ((target-line (+ (current-line) 25)))
     (if (>= target-line journalctl-current-lines)
@@ -508,7 +511,8 @@ of the journal entries that are shown.")
       (forward-line 25)))))
 
 (defun journalctl-scroll-down ()
-  "Scroll down journalctl output or move to next chunk when bottom of frame is reached."
+  "Scroll down journalctl output or move to next chunk when bottom
+   of frame is reached."
   (interactive)
   (let ((target-line (- (current-line) 25)))
     (if (<= target-line 0)

@@ -24,8 +24,7 @@
                :fetcher github
                :repo "SebastianMeisel/journalctl-mode"
                :branch "transient"
-               :upgrade t)
-      :ensure t)
+               :upgrade t))
   #+END_SRC
 
 * Features
