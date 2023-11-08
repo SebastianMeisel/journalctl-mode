@@ -3,11 +3,11 @@
 ;; Copyright © 2020, by Sebastian Meisel
 
 ;; Author: Sebastian Meisel <sebastian.meisel@gmail.com>
-;; Version: 0.9
-;; Created:  June 1, 2020
+;; Version: 1.0
+;; Created:  November 8, 2023
 ;; Keywords: unix
 ;; Homepage: https://github.com/SebastianMeisel/journalctl-mode
-;; Package-Requires: ((emacs "24.1"))
+;; Package-Requires: ((emacs "27.1"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -77,6 +77,19 @@
   "Keywords that mark finished processes or steps in journalctl output."
   :group 'journalctl
   :type 'string)
+
+(defcustom journalctl-follow-freq
+  0.1
+  "Frequency in seconds for follow simulation"
+  :group 'journalctl
+  :type 'float)
+
+(defcustom journalctl-follow-lines
+  "30"
+  "Number of lines for follow simulation"
+  :group 'journalctl
+  :type 'string)
+
 
 ;;; faces
 (defface journalctl-error-face
@@ -221,24 +234,28 @@ of the journal entries that are shown.")
    "[\n]" t " ")
   "List of facilities available to journalctl.")
 
+(defvar journalctl-follow-timer
+  nil
+  "Timer for follow simulation")
+
 
 ;; functions
 (defun journalctl--disk-usage ()
   "Disk-usage of journalctl."
   (let ((cmd-out (shell-command-to-string "journalctl --disk-usage")))
-    (if (string-match "[0-9.]+G" cmd-out)
+    (if (string-match "[0-9.]+\\(T\\|G\\|M\\)" cmd-out)
         (match-string 0 cmd-out)
       "0G")))
 
 (transient-define-infix journalctl-transient:--lines ()
-		       :description "Limit the number of events shown."
+		       :description "Limit number of events."
 		       :class 'transient-option
 		       :shortarg "n"
 		       :argument "--lines="
 		       )
 
 (transient-define-infix journalctl-transient:--outputs ()
-		       :description "Controls the formatting of the journal entries that are shown."
+		       :description "Controls the formatting."
 		       :class 'transient-option
 		       :shortarg "o o"
 		       :argument "--output="
@@ -246,7 +263,7 @@ of the journal entries that are shown.")
 		       )
 
 (transient-define-infix journalctl-transient:--field () 
-  :description "Print all possible data values the specified field can take in all entries of the journal."
+  :description "Print all values for a specific field."
   :class 'transient-option
   :shortarg "o f"
   :argument "--field="
@@ -278,7 +295,7 @@ of the journal entries that are shown.")
 		       )
 
 (transient-define-infix journalctl-transient:--priority ()
-		       :description "Filter output by message priorities or priority ranges."
+		       :description "Filter output by message priorities (ranges)."
 		       :class 'transient-option
 		       :shortarg "c p"
 		       :argument "--priority="
@@ -286,7 +303,7 @@ of the journal entries that are shown.")
 		       )
 
 (transient-define-infix journalctl-transient:--identifier ()
-		       :description "Show messages for the specified syslog identifier."
+		       :description "Show messages for specified syslog identifier."
 		       :class 'transient-option
 		       :shortarg "c t"
 		       :argument "--identifier="
@@ -301,17 +318,19 @@ of the journal entries that are shown.")
 		       )
 
 (transient-define-infix journalctl-transient:--since ()
-		       :description  "Start showing entries on or newer than the specified date. (2012-10-30 18:17:16|yesterday|today|now|+|-)"
+		       :description  "Start showing entries on or newer than the specified date."
 		       :class 'transient-option
 		       :shortarg "S"
 		       :argument "--since="
+		       :prompt "Since (2012-10-30 18:17:16|yesterday|today|now|+|-):"
 		       )
 
 (transient-define-infix journalctl-transient:--until ()
-		       :description  "Start showing entries on or older than the specified date. (2012-10-30 18:17:16|yesterday|today|now|+|-)"
+		       :description  "Start showing entries on or older than the specified date."
 		       :class 'transient-option
 		       :shortarg "U"
 		       :argument "--until="
+		       :prompt "Until (2012-10-30 18:17:16|yesterday|today|now|+|-):"
 		       )
 
 (transient-define-infix journalctl-transient:--machine ()
@@ -358,13 +377,14 @@ of the journal entries that are shown.")
 
 (transient-define-prefix journalctl ()
   "Transient for journalctl."
-  ["Output"
-   (journalctl-transient:--field)
-   ("o l" "Ellipsize fields when they do not fit in available columns." "--no-full")
-   ("o a" " Show all fields in full, even if they include unprintable characters or are very long."
+  [["Output"
+   ("o a" " Show all fields in full."
+   ("o l" "Ellipsize fields when they do not fit." "--no-full")
     "--all")
-   ("o m" "Show entries interleaved from all available journals, including remote ones." "--merge")
+   ("o m" "Show entries interleaved from all available journals." "--merge")
+   (journalctl-transient:--field)
    ("o q" "Suppresses all informational messages." "--quiet")
+   ("o u" "Express time in Coordinated Universal Time (UTC)." "--utc")
    (journalctl-transient:--outputs)
    ]
   ["Sources"
@@ -374,45 +394,75 @@ of the journal entries that are shown.")
    (journalctl-transient:--root)
    (journalctl-transient:--image)
    (journalctl-transient:--namespace)
-   ]
-  ["Timestamp"
-   ("t u" "Express time in Coordinated Universal Time (UTC)." "--utc")]
-  ["Filters"
-   (journalctl-transient:--since)
-   (journalctl-transient:--until)
-   ("r" "Reverse output so that the newest entries are displayed first." "--reverse")
-   ("x" "Augment log lines with explanation texts from the message catalog." "--catalog")
-   (journalctl-transient:--lines)
-   ]
-  ["Constraint"
-   ("c k" "Show only kernel messages. This implies -b." "--dmesg")
-   ("c s" "Show only system and kernel messages." "--system")
-   ("c u" "Show only system and kernel messages." "--user")
+   ]]
+  [["Constraint"
+   ("C k" "Show only kernel messages. This implies -b." "--dmesg")
+   ("C s" "Show only system and kernel messages." "--system")
+   ("C u" "Show only system and kernel messages." "--user")
    (journalctl-transient:--boot)
    (journalctl-transient:--identifier)
    (journalctl-transient:--unit)
    (journalctl-transient:--user-unit)
    (journalctl-transient:--facility)
    ]
+  ["Filters"
+   (journalctl-transient:--since)
+   (journalctl-transient:--until)
+   ("r" "Reverse output (newest entries first)." "--reverse")
+   ("x" "Augment log lines with explanations." "--catalog")
+   (journalctl-transient:--lines)
+   ]]
   ["Aufruf"
    (journalctl-standard-suffix)
+   (journalctl-close-menu-suffix)
+   (journalctl-follow-suffix)
    ])
 
 (transient-define-suffix journalctl-standard-suffix ()
-  "Rund journalctl with transient arguments on current chunk."
-  :transient nil
-  :key "RET"
-  :description "Rund journalctl with transient arguments on current chunk."
+  :transient t
+  :key "SPC"
+  :description "Run journalctl with transient arguments on current chunk. KEEP menu."
   (interactive)
   (let ((args (transient-args (oref transient-current-prefix command))))
   (journalctl--run args journalctl-current-chunk)))
 
+(transient-define-suffix journalctl-follow-suffix ()
+  :transient nil
+  :key "f"
+  :description "Run journalctl with transient arguments on current chunk in follow mode."
+  (interactive)
+  (let ((args (transient-args (oref transient-current-prefix command)))
+	(follow-args (concat "--lines=" journalctl-follow-lines " -e")))
+    (add-to-list 'args follow-args)
+    (setq journalctl-follow-timer
+	  (run-with-timer journalctl-follow-freq journalctl-follow-freq
+			  'journalctl--run args journalctl-current-chunk))))
+
+(transient-define-suffix journalctl-close-menu-suffix ()
+  :transient nil
+  :key "RET"
+  :description "Run journalctl with transient arguments on current chunk. CLOSE menu."
+  (interactive)
+  (let ((args (transient-args (oref transient-current-prefix command))))
+  (journalctl--run args journalctl-current-chunk)))
+
+;; (defun journalctl-opts-to-alist (opt-list)
+;;   "Convert the string of command line parameters into a alist (PARAMETER . OPTION)."
+;;   (mapcar 'car
+;; 	  (mapcar 'cl--plist-to-alist
+;; 		  (mapcar
+;; 		   (lambda
+;; 		     (element)
+;; 		     (string-split element "=" nil))
+;; 		   opt-list))))
+
 (defun journalctl--run (transient-opts &optional chunk)
   "Run journalctl with given TRANSIENT-OPTS and present CHUNK of output in a special buffer."
   (interactive (list (transient-args 'journalctl-transient)))
-  (setq journalctl-current-opts (mapconcat 'identity transient-opts " "))
-  (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " journalctl-current-opts "| wc -l"))))
-  (let* ((this-chunk (or chunk 0)) ;; if chunk is not explicitly given, we assume the first (0) chunk
+  (setq journalctl-current-opts transient-opts)
+  (let* ((opts (mapconcat 'identity transient-opts " "))
+	 (lines (string-to-number (shell-command-to-string (concat "journalctl " opts "| wc -l"))))
+	 (this-chunk (or chunk 0)) ;; if chunk is not explicitly given, we assume the first (0) chunk
          (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
          (last-line (if (<= (+ first-line journalctl-chunk-size) journalctl-current-lines)
                         (+ first-line journalctl-chunk-size)
@@ -422,10 +472,11 @@ of the journal entries that are shown.")
       (fundamental-mode)
       (erase-buffer))
     (save-window-excursion
-      (shell-command (concat "journalctl " journalctl-current-opts " | sed -ne '" (int-to-string first-line) "," (int-to-string last-line) "p'")
+      (shell-command (concat "journalctl " opts " | sed -ne '" (int-to-string first-line) "," (int-to-string last-line) "p'")
                      "*journalctl*" "*journalctl-error*"))
     (switch-to-buffer "*journalctl*")
     (setq buffer-read-only t)
+    (setq journalctl-current-lines lines)
     (journalctl-mode)))
 
 ;;;;;; Moving and Chunks
@@ -449,7 +500,7 @@ of the journal entries that are shown.")
 (defun journalctl-scroll-up ()
   "Scroll up journalctl output or move to next chunk when bottom of frame is reached."
   (interactive)
-  (let ((target-line  (+ (current-line) 25)))
+  (let ((target-line (+ (current-line) 25)))
     (if (>= target-line journalctl-current-lines)
 	(message "%s" "End of journalctl output")
       (if (>= target-line journalctl-chunk-size)
@@ -459,7 +510,7 @@ of the journal entries that are shown.")
 (defun journalctl-scroll-down ()
   "Scroll down journalctl output or move to next chunk when bottom of frame is reached."
   (interactive)
-  (let ((target-line  (- (current-line) 25)))
+  (let ((target-line (- (current-line) 25)))
     (if (<= target-line 0)
 	(if (<=  journalctl-current-chunk 0)
 	    	(message "%s" "Beginn of journalctl output")
@@ -467,7 +518,13 @@ of the journal entries that are shown.")
       (forward-line  -25)))
 
 ;;;;;;;; Special functions
-
+(defun journalctl-quit ()
+  "Quit journalctl session."
+  (interactive)
+  (if (timerp journalctl-follow-timer)
+      (cancel-timer journalctl-follow-timer))
+  (setq journalctl-current-chunk 0)
+  (kill-buffer  "*journalctl*"))
 
 
 ;;;;;;;;;;;;;;;;; Fontlock
@@ -504,7 +561,7 @@ of the journal entries that are shown.")
     ;;
     (define-key map (kbd "C-v") 'journalctl-scroll-up)
     (define-key map (kbd "M-v") 'journalctl-scroll-down)
-    (define-key map (kbd "q")  (lambda () (interactive) (kill-buffer  "*journalctl*")))
+    (define-key map (kbd "q")  'journalctl-quit)
     map)
   "Keymap for journalctl mode.")
 
