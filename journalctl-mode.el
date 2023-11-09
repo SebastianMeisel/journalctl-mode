@@ -460,6 +460,7 @@ of the journal entries that are shown.")
 (defun journalctl ()
   "Run journalctl and open transient menu."
   (interactive)
+  (journalctl--run '("--lines 1"))
   (journalctl--run '(""))
   (journalctl-transient))
 
