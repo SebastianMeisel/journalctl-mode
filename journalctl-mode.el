@@ -434,7 +434,7 @@ of the journal entries that are shown.")
   (interactive)
   (let ((args (transient-args (oref transient-current-prefix command)))
 	(follow-args (concat "--lines=" journalctl-follow-lines " -e")))
-    (cl-pushnew follow-args 'args)
+    (cl-pushnew follow-args args)
     (setq journalctl-follow-timer
 	  (run-with-timer journalctl-follow-freq journalctl-follow-freq
 			  'journalctl--run args journalctl-current-chunk))))
@@ -569,6 +569,9 @@ of the journal entries that are shown.")
     (define-key map (kbd "q")  'journalctl-quit)
     map)
   "Keymap for journalctl mode.")
+
+(defvar mode-line-process nil "Process status in the mode line.")
+(defvar font-lock-defaults nil "Defaults for Font Lock mode specified by the major mode.")
 
 ;;;###autoload
 (define-derived-mode journalctl-mode fundamental-mode "journalctl"
