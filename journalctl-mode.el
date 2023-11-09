@@ -154,10 +154,9 @@
 
 (defvar journalctl-user-unit-list
   (split-string
-   (shell-command-to-string "systemctl list-units --user --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'")
+   (shell-command-to-string "systemctl list-units --user --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'")
    "[\n]" t " ")
   "List of systemd-units available to journalctl.")
-
 
 (defvar journalctl-boot-list
   (split-string
@@ -376,7 +375,7 @@ of the journal entries that are shown.")
 		       :argument "--namespace="
 		       )
 
-(transient-define-prefix journalctl ()
+(transient-define-prefix journalctl-transient ()
   "Transient for journalctl."
   [["Output"
    ("o a" " Show all fields in full."
@@ -417,6 +416,7 @@ of the journal entries that are shown.")
    (journalctl-standard-suffix)
    (journalctl-close-menu-suffix)
    (journalctl-follow-suffix)
+   ("q" "Quit journalctl." journalctl-quit)
    ])
 
 (transient-define-suffix journalctl-standard-suffix ()
@@ -457,6 +457,12 @@ of the journal entries that are shown.")
 ;; 		     (string-split element "=" nil))
 ;; 		   opt-list))))
 
+(defun journalctl ()
+  "Run journalctl and open transient menu."
+  (interactive)
+  (journalctl--run '(""))
+  (journalctl-transient))
+
 (defun journalctl--run (transient-opts &optional chunk)
   "Run journalctl with given TRANSIENT-OPTS
    and present CHUNK of output in a special buffer."
@@ -470,17 +476,17 @@ of the journal entries that are shown.")
                         (+ first-line journalctl-chunk-size)
                       journalctl-current-lines)))
     (with-current-buffer (get-buffer-create "*journalctl*")
+      (switch-to-buffer "*journalctl*")
       (setq buffer-read-only nil)
       (fundamental-mode)
-      (erase-buffer))
-    (save-window-excursion
-      (shell-command (concat "journalctl " opts " | sed -ne '" (int-to-string first-line) "," (int-to-string last-line) "p'")
-                     "*journalctl*" "*journalctl-error*"))
-    (sleep-for 0 1) ;; prevent race condition
-    (switch-to-buffer "*journalctl*")
-    (setq buffer-read-only t)
-    (setq journalctl-current-lines lines)
-    (journalctl-mode)))
+      (erase-buffer)
+      (save-window-excursion
+	(shell-command (concat "journalctl " opts " | sed -ne '" (int-to-string first-line) "," (int-to-string last-line) "p'")
+                       "*journalctl*" "*journalctl-error*"))
+      (sleep-for 0 1) ;; prevent race condition
+      (setq buffer-read-only t)
+      (setq journalctl-current-lines lines)
+      (journalctl-mode))))
 
 ;;;;;; Moving and Chunks
 
