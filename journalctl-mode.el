@@ -476,6 +476,7 @@ of the journal entries that are shown.")
     (save-window-excursion
       (shell-command (concat "journalctl " opts " | sed -ne '" (int-to-string first-line) "," (int-to-string last-line) "p'")
                      "*journalctl*" "*journalctl-error*"))
+    (sleep-for 0 1) ;; prevent race condition
     (switch-to-buffer "*journalctl*")
     (setq buffer-read-only t)
     (setq journalctl-current-lines lines)
