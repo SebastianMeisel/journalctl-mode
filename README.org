@@ -57,6 +57,9 @@
   | M-v   | Scroll down in the buffer           |
   | q     | Quit journalctl mode                |
 
+* Other Packages
+There is another package [[https://github.com/WJCFerguson/journalctl][journalctl]] (rather than journalctl-mode) by James Ferguson that fetches and interleaves JSON data using multiple simultaneous asynchronous journalctl queries, while mine offers a UI for query-building and chunked synchronous data loading.
+
 * License
   This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
 
