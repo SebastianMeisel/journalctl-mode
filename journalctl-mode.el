@@ -44,13 +44,17 @@
 ;; customization
 
 (defgroup journalctl nil
-  "View journalctl output in a emacs buffer"
+  "View journalctl output in a Emacs buffer."
   :group 'external)
 
 (defcustom journalctl-chunk-size
   250
+<<<<<<< variant A
   "Number of lines of journalctl output that are
   loaded in the buffer. You can navigate."
+>>>>>>> variant B
+  "Number of lines of journalctl output."
+======= end
   :group 'journalctl
   :type 'integer)
 
@@ -81,13 +85,13 @@
 
 (defcustom journalctl-follow-freq
   0.1
-  "Frequency in seconds for follow simulation"
+  "Frequency in seconds for follow simulation."
   :group 'journalctl
   :type 'float)
 
 (defcustom journalctl-follow-lines
   "30"
-  "Number of lines for follow simulation"
+  "Number of lines for follow simulation."
   :group 'journalctl
   :type 'string)
 
@@ -180,8 +184,8 @@
         "json-seq"
         "cat"
         "with-unit")
-  "Options for the --output parameter, that controls the formatting
-of the journal entries that are shown.")
+  "Options for the --output parameter.
+It controls the formatting of the journal entries that are shown.")
 
 (defvar journalctl-priority-list
   '("emerg" "0"
@@ -236,7 +240,7 @@ of the journal entries that are shown.")
 
 (defvar journalctl-follow-timer
   nil
-  "Timer for follow simulation")
+  "Timer for follow simulation.")
 
 
 ;; functions
@@ -466,8 +470,7 @@ of the journal entries that are shown.")
   (journalctl-transient))
 
 (defun journalctl--run (transient-opts &optional chunk)
-  "Run journalctl with given TRANSIENT-OPTS
-   and present CHUNK of output in a special buffer."
+  "Run journalctl with given TRANSIENT-OPTS and present CHUNK of output in a special buffer."
   (interactive (list (transient-args 'journalctl-transient)))
   (setq journalctl-current-opts transient-opts)
   (let* ((opts (mapconcat 'identity transient-opts " "))
@@ -483,8 +486,11 @@ of the journal entries that are shown.")
       (fundamental-mode)
       (erase-buffer)
       (save-window-excursion
-	(shell-command (concat "journalctl " opts " | sed -ne '" (int-to-string first-line) "," (int-to-string last-line) "p'")
-                       "*journalctl*" "*journalctl-error*"))
+	(shell-command
+	 (concat "journalctl " opts " | sed -ne '"
+		 (int-to-string first-line) ","
+		 (int-to-string last-line) "p'")
+         "*journalctl*" "*journalctl-error*"))
       (setq buffer-read-only t)
       (setq journalctl-current-lines lines)
       (journalctl-mode))))
@@ -494,7 +500,9 @@ of the journal entries that are shown.")
 (defun journalctl-next-chunk ()
   "Load the next chunk of journalctl output to the buffer."
   (interactive)
-  (let* ((chunk (if  (> (* (+ 2 journalctl-current-chunk) journalctl-chunk-size) journalctl-current-lines)
+  (let* ((chunk (if  (> (* (+ 2 journalctl-current-chunk)
+			   journalctl-chunk-size)
+			journalctl-current-lines)
 		    journalctl-current-chunk
 		  (+ journalctl-current-chunk 1) )))
 	(setq journalctl-current-chunk chunk)
@@ -503,13 +511,14 @@ of the journal entries that are shown.")
 (defun journalctl-previous-chunk ()
   "Load the previous chunk of journalctl output to the buffer."
   (interactive)
-  (let ((chunk (if (>= journalctl-current-chunk 1) (- journalctl-current-chunk 1) 0)))
+  (let ((chunk (if (>= journalctl-current-chunk 1)
+		   (- journalctl-current-chunk 1) 0)))
 	(setq journalctl-current-chunk chunk)
 	(journalctl--run journalctl-current-opts chunk)))
 
 (defun journalctl-scroll-up ()
-  "Scroll up journalctl output or move to next chunk
-   when bottom of frame is reached."
+  "Scroll up journalctl output.
+Move to next chunk when bottom of frame is reached."
   (interactive)
   (let ((target-line (+ (array-current-line) 25)))
     (if (>= target-line journalctl-current-lines)
@@ -519,15 +528,15 @@ of the journal entries that are shown.")
       (forward-line 25)))))
 
 (defun journalctl-scroll-down ()
-  "Scroll down journalctl output or move to next chunk when bottom
-   of frame is reached."
+  "Scroll down journalctl output.
+Move to next chunk when bottom of frame is reached."
   (interactive)
   (let ((target-line (- (array-current-line) 25)))
     (if (<= target-line 0)
 	(if (<=  journalctl-current-chunk 0)
-	    	(message "%s" "Beginn of journalctl output")
-	(journalctl-previous-chunk)))
-      (forward-line  -25)))
+	    (message "%s" "Beginn of journalctl output")
+	  (journalctl-previous-chunk)))
+    (forward-line  -25)))
 
 ;;;;;;;; Special functions
 (defun journalctl-quit ()
@@ -545,10 +554,14 @@ of the journal entries that are shown.")
 (defvar journalctl-font-lock-keywords
       (let* (
             ;; generate regex string for each category of keywords
-	     (error-keywords-regexp (regexp-opt journalctl-error-keywords 'words))
-	     (warn-keywords-regexp (regexp-opt journalctl-warn-keywords 'words))
-	     (starting-keywords-regexp (regexp-opt journalctl-starting-keywords 'words))
-	     (finished-keywords-regexp (regexp-opt journalctl-finished-keywords 'words)))
+	     (error-keywords-regexp
+	      (regexp-opt journalctl-error-keywords 'words))
+	     (warn-keywords-regexp
+	      (regexp-opt journalctl-warn-keywords 'words))
+	     (starting-keywords-regexp
+	      (regexp-opt journalctl-starting-keywords 'words))
+	     (finished-keywords-regexp
+	      (regexp-opt journalctl-finished-keywords 'words)))
         `(
           (,warn-keywords-regexp . 'journalctl-warning-face)
           (,error-keywords-regexp . 'journalctl-error-face)
@@ -582,8 +595,11 @@ of the journal entries that are shown.")
 
 ;;;###autoload
 (define-derived-mode journalctl-mode fundamental-mode "journalctl"
-  "Major mode for viewing journalctl output"
-  (setq mode-line-process (concat " (disk usage: " (journalctl--disk-usage) ")"))
+  "Major mode for viewing journalctl output."
+  (setq mode-line-process
+	(concat " (disk usage: "
+		(journalctl--disk-usage)
+		")"))
   ;; code for syntax highlighting
   (setq font-lock-defaults '((journalctl-font-lock-keywords))))
 
@@ -592,3 +608,8 @@ of the journal entries that are shown.")
 (provide 'journalctl-mode)
 
 ;;; journalctl-mode.el ends here
+
+;; Local Variables:
+;; jinx-languages: "en"
+;; jinx-local-words: "journalctl"
+;; End:
