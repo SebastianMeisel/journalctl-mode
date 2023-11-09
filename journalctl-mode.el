@@ -49,8 +49,8 @@
 
 (defcustom journalctl-chunk-size
   250
-  "Number of lines of journalctl output that are loaded in the buffer.
-   You can navigate."
+  "Number of lines of journalctl output that are
+  loaded in the buffer. You can navigate." 
   :group 'journalctl
   :type 'integer)
   
@@ -503,7 +503,7 @@ of the journal entries that are shown.")
   "Scroll up journalctl output or move to next chunk
    when bottom of frame is reached."
   (interactive)
-  (let ((target-line (+ (current-line) 25)))
+  (let ((target-line (+ (array-current-line) 25)))
     (if (>= target-line journalctl-current-lines)
 	(message "%s" "End of journalctl output")
       (if (>= target-line journalctl-chunk-size)
@@ -514,7 +514,7 @@ of the journal entries that are shown.")
   "Scroll down journalctl output or move to next chunk when bottom
    of frame is reached."
   (interactive)
-  (let ((target-line (- (current-line) 25)))
+  (let ((target-line (- (array-current-line) 25)))
     (if (<= target-line 0)
 	(if (<=  journalctl-current-chunk 0)
 	    	(message "%s" "Beginn of journalctl output")
@@ -577,7 +577,7 @@ of the journal entries that are shown.")
   (setq font-lock-defaults '((journalctl-font-lock-keywords))))
 
 
-;; add the mode to the `features' list
+;; add the mode to the `features` list
 (provide 'journalctl-mode)
 
 ;;; journalctl-mode.el ends here
