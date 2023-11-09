@@ -460,7 +460,8 @@ of the journal entries that are shown.")
 (defun journalctl ()
   "Run journalctl and open transient menu."
   (interactive)
-  (journalctl--run '("--lines 1"))
+  (journalctl--run '("--lines 250"))
+  (sleep-for 0 1) ;; prevent race condition
   (journalctl--run '(""))
   (journalctl-transient))
 
@@ -484,7 +485,6 @@ of the journal entries that are shown.")
       (save-window-excursion
 	(shell-command (concat "journalctl " opts " | sed -ne '" (int-to-string first-line) "," (int-to-string last-line) "p'")
                        "*journalctl*" "*journalctl-error*"))
-      (sleep-for 0 1) ;; prevent race condition
       (setq buffer-read-only t)
       (setq journalctl-current-lines lines)
       (journalctl-mode))))
