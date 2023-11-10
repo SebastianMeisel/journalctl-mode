@@ -52,7 +52,7 @@
   "Number of lines of journalctl output."
   :group 'journalctl
   :type 'integer)
-  
+
 (defcustom journalctl-error-keywords
   '("Failed" "failed" "Error" "error" "critical" "couldn't" "Can't" "not" "Not" "unreachable")
   "Keywords that mark errors in journalctl output."
@@ -147,13 +147,13 @@
 
 (defvar journalctl-unit-list
   (split-string
-   (shell-command-to-string "systemctl list-units --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'")
+   (shell-command-to-string "systemctl list-units --all --quiet | sed -e 's/●/ /g' | awk '{print $1}'")
    "[\n]" t " ")
   "List of systemd-units available to journalctl.")
 
 (defvar journalctl-user-unit-list
   (split-string
-   (shell-command-to-string "systemctl list-units --user --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'")
+   (shell-command-to-string "systemctl list-units --all --quiet --user | sed -e 's/●/ /g' | awk '{print $1}'")
    "[\n]" t " ")
   "List of systemd-units available to journalctl.")
 
