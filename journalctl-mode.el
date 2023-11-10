@@ -424,7 +424,8 @@ It controls the formatting of the journal entries that are shown.")
   :description "Run journalctl with transient arguments on current chunk. KEEP menu."
   (interactive)
   (let ((args (transient-args (oref transient-current-prefix command))))
-  (journalctl--run args journalctl-current-chunk)))
+    (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " args "| wc -l"))))
+    (journalctl--run args journalctl-current-chunk)))
 
 (transient-define-suffix journalctl-follow-suffix ()
   :transient nil
@@ -444,7 +445,8 @@ It controls the formatting of the journal entries that are shown.")
   :description "Run journalctl with transient arguments on current chunk. CLOSE menu."
   (interactive)
   (let ((args (transient-args (oref transient-current-prefix command))))
-  (journalctl--run args journalctl-current-chunk)))
+    (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " args "| wc -l"))))
+    (journalctl--run args journalctl-current-chunk)))
 
 ;; (defun journalctl-opts-to-alist (opt-list)
 ;;   "Convert the string of command line parameters into a alist (PARAMETER . OPTION)."
@@ -469,7 +471,7 @@ It controls the formatting of the journal entries that are shown.")
   (interactive (list (transient-args 'journalctl-transient)))
   (setq journalctl-current-opts transient-opts)
   (let* ((opts (mapconcat 'identity transient-opts " "))
-	 (lines (string-to-number (shell-command-to-string (concat "journalctl " opts "| wc -l"))))
+	 (lines  journalctl-current-lines)
 	 (this-chunk (or chunk 0)) ;; if chunk is not explicitly given, we assume the first (0) chunk
          (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
          (last-line (if (<= (+ first-line journalctl-chunk-size) journalctl-current-lines)
@@ -487,7 +489,6 @@ It controls the formatting of the journal entries that are shown.")
 		 (int-to-string last-line) "p'")
          "*journalctl*" "*journalctl-error*"))
       (setq buffer-read-only t)
-      (setq journalctl-current-lines lines)
       (journalctl-mode))))
 
 ;;;;;; Moving and Chunks
