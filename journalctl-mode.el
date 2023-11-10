@@ -50,10 +50,10 @@
 (defcustom journalctl-chunk-size
   250
   "Number of lines of journalctl output that are
-  loaded in the buffer. You can navigate." 
+  loaded in the buffer. You can navigate."
   :group 'journalctl
   :type 'integer)
-  
+
 (defcustom journalctl-error-keywords
   '("Failed" "failed" "Error" "error" "critical" "couldn't" "Can't" "not" "Not" "unreachable")
   "Keywords that mark errors in journalctl output."
@@ -148,13 +148,13 @@
 
 (defvar journalctl-unit-list
   (split-string
-   (shell-command-to-string "systemctl list-units --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'")
+   (shell-command-to-string "systemctl list-units --all --quiet | sed -e 's/●/ /g' | awk '{print $1}'")
    "[\n]" t " ")
   "List of systemd-units available to journalctl.")
 
 (defvar journalctl-user-unit-list
   (split-string
-   (shell-command-to-string "systemctl list-units --user --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'")
+   (shell-command-to-string "systemctl list-units --all --quiet --user | sed -e 's/●/ /g' | awk '{print $1}'")
    "[\n]" t " ")
   "List of systemd-units available to journalctl.")
 
@@ -262,7 +262,7 @@ of the journal entries that are shown.")
 		       :choices journalctl-output-list
 		       )
 
-(transient-define-infix journalctl-transient:--field () 
+(transient-define-infix journalctl-transient:--field ()
   :description "Print all values for a specific field."
   :class 'transient-option
   :shortarg "o f"
