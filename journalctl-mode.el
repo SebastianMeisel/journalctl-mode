@@ -4,7 +4,7 @@
 
 ;; Author: Sebastian Meisel <sebastian.meisel@gmail.com>
 ;; Version: 1.0
-;; Created:  November 8, 2023
+;; Created:  November 10, 2023
 ;; Keywords: unix
 ;; Homepage: https://github.com/SebastianMeisel/journalctl-mode
 ;; Package-Requires: ((emacs "27.1"))
