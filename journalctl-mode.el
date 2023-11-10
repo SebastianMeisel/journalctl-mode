@@ -237,6 +237,9 @@ It controls the formatting of the journal entries that are shown.")
   nil
   "Timer for follow simulation.")
 
+(defvar journalctl-process
+  nil
+  "Process for journalctl.")
 
 ;; functions
 (defun journalctl--disk-usage ()
@@ -423,8 +426,12 @@ It controls the formatting of the journal entries that are shown.")
   :key "SPC"
   :description "Run journalctl with transient arguments on current chunk. KEEP menu."
   (interactive)
-  (let ((args (transient-args (oref transient-current-prefix command))))
-    (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " args "| wc -l"))))
+  (let* ((args (transient-args (oref transient-current-prefix command)))
+	(opts (mapconcat 'identity args " ")))
+    (setq journalctl-current-lines
+	  (string-to-number
+	   (shell-command-to-string
+	    (concat "journalctl " opts "| wc -l"))))
     (journalctl--run args journalctl-current-chunk)))
 
 (transient-define-suffix journalctl-follow-suffix ()
@@ -444,8 +451,12 @@ It controls the formatting of the journal entries that are shown.")
   :key "RET"
   :description "Run journalctl with transient arguments on current chunk. CLOSE menu."
   (interactive)
-  (let ((args (transient-args (oref transient-current-prefix command))))
-    (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " args "| wc -l"))))
+  (let* ((args (transient-args (oref transient-current-prefix command)))
+	 (opts (mapconcat 'identity args " ")))
+    (setq journalctl-current-lines
+	  (string-to-number
+	   (shell-command-to-string
+	    (concat "journalctl " opts "| wc -l"))))
     (journalctl--run args journalctl-current-chunk)))
 
 ;; (defun journalctl-opts-to-alist (opt-list)
@@ -461,8 +472,6 @@ It controls the formatting of the journal entries that are shown.")
 (defun journalctl ()
   "Run journalctl and open transient menu."
   (interactive)
-  (journalctl--run '("--lines 250"))
-  (sleep-for 0 1) ;; prevent race condition
   (journalctl--run '(""))
   (journalctl-transient))
 
@@ -474,20 +483,41 @@ It controls the formatting of the journal entries that are shown.")
 	 (lines  journalctl-current-lines)
 	 (this-chunk (or chunk 0)) ;; if chunk is not explicitly given, we assume the first (0) chunk
          (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
-         (last-line (if (<= (+ first-line journalctl-chunk-size) journalctl-current-lines)
+         (last-line (if (<= (+ first-line journalctl-chunk-size)
+			    journalctl-current-lines)
                         (+ first-line journalctl-chunk-size)
-                      journalctl-current-lines)))
+                      journalctl-current-lines))
+	 (command `("bash"
+		      "-c"
+		      ,(concat "journalctl "
+			      opts
+			      " | sed -ne '"
+			      (int-to-string first-line)
+			      ","
+			      (int-to-string last-line)
+			      "p'"))))
     (with-current-buffer (get-buffer-create "*journalctl*")
       (switch-to-buffer "*journalctl*")
       (setq buffer-read-only nil)
-      (fundamental-mode)
       (erase-buffer)
-      (save-window-excursion
-	(shell-command
-	 (concat "journalctl " opts " | sed -ne '"
-		 (int-to-string first-line) ","
-		 (int-to-string last-line) "p'")
-         "*journalctl*" "*journalctl-error*"))
+      (setq journalctl-process
+	    (make-process
+	     :name "journalctl"
+	     :buffer "*journalctl*"
+	     :command command
+	     :filter (lambda (proc string)
+		       (when (buffer-live-p (process-buffer proc))
+			 (with-current-buffer (process-buffer proc)
+			   (setq buffer-read-only nil)
+			   (let ((moving (= (point) (process-mark proc))))
+			     (save-excursion
+                               (goto-char (process-mark proc))
+                               (insert string)
+                               (set-marker (process-mark proc) (point)))
+			     (if moving (goto-char (process-mark proc)))
+			     (goto-char (point-min))))))))
+      (while (re-search-backward "Process journalctl finished" nil t)
+	(delete-region (match-beginning 0) (match-end 0)))
       (setq buffer-read-only t)
       (journalctl-mode))))
 
