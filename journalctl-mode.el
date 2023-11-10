@@ -3,11 +3,11 @@
 ;; Copyright © 2020, by Sebastian Meisel
 
 ;; Author: Sebastian Meisel <sebastian.meisel@gmail.com>
-;; Version: 0.9
-;; Created:  June 1, 2020
+;; Version: 1.0
+;; Created:  November 10, 2023
 ;; Keywords: unix
 ;; Homepage: https://github.com/SebastianMeisel/journalctl-mode
-;; Package-Requires: ((emacs "24.1"))
+;; Package-Requires: ((emacs "27.1"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -32,23 +32,24 @@
 ;; This is a major-mode for Emacs to view systemd's journalctl output in Emacs.
 ;; The output is split into chunks for performance reasons.
 ;; Fontification is provided and may be customized.
-;; At the moment it is still in very early development.  Please give feedback on any problems that occure.
+;; At the moment it is still in very early development.  Please give feedback on any problems that occur.
 
-;; Put journalctl-mode.el in your load-path and add   ( require 'journalctl-mode)  to your .Emacs file.
+;; Put journalctl-mode.el in your load-path and add   ( require 'journalctl-mode)  to your .emacs file.
 
 ;;; Code:
 
 (require 'array)
+(require 'transient)
 
 ;; customization
 
 (defgroup journalctl nil
-  "View journalctl output in a emacs buffer"
+  "View journalctl output in a Emacs buffer."
   :group 'external)
 
 (defcustom journalctl-chunk-size
   250
- "Number of lines of journalctl output that are loaded in the buffer.  You can navigate."
+  "Number of lines of journalctl output."
   :group 'journalctl
   :type 'integer)
   
@@ -76,6 +77,19 @@
   "Keywords that mark finished processes or steps in journalctl output."
   :group 'journalctl
   :type 'string)
+
+(defcustom journalctl-follow-freq
+  0.1
+  "Frequency in seconds for follow simulation."
+  :group 'journalctl
+  :type 'float)
+
+(defcustom journalctl-follow-lines
+  "30"
+  "Number of lines for follow simulation."
+  :group 'journalctl
+  :type 'string)
+
 
 ;;; faces
 (defface journalctl-error-face
@@ -125,141 +139,383 @@
 
 (defvar journalctl-current-opts
   ""
-  "Keeps the optetes of  the last call of journalctl.")
+  "Keeps the opts of  the last call of journalctl.")
 
 (defvar journalctl-current-filter
   ""
   "Keeps filters as grep that shall be applied to journalctl's output.")
 
+(defvar journalctl-unit-list
+  (split-string
+   (shell-command-to-string "systemctl list-units --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'")
+   "[\n]" t " ")
+  "List of systemd-units available to journalctl.")
+
+(defvar journalctl-user-unit-list
+  (split-string
+   (shell-command-to-string "systemctl list-units --user --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'")
+   "[\n]" t " ")
+  "List of systemd-units available to journalctl.")
+
+(defvar journalctl-boot-list
+  (split-string
+   (shell-command-to-string "journalctl --list-boots | awk '{print $1}'")
+   "[\n]" t " ")
+  "List of boot-logs available to journalctl.")
+
+
+(defvar journalctl-output-list
+  '("short-full"
+        "short-iso"
+        "short-iso-precise"
+        "short-precise"
+        "short-monotonic"
+        "short-unix"
+        "verbose"
+        "export"
+        "json"
+        "json-pretty"
+        "json-sse"
+        "json-seq"
+        "cat"
+        "with-unit")
+  "Options for the --output parameter.
+It controls the formatting of the journal entries that are shown.")
+
+(defvar journalctl-priority-list
+  '("emerg" "0"
+    "alert" "1"
+    "crit" "2"
+    "err" "3"
+    "warning" "4"
+    "notice" "5"
+    "info" "6"
+    "debug" "7"
+    "emerg..alert" "alert..emerg" "0..1" "1..0"
+    "emerg..crit" "crit..emerg" "0..2" "2..0"
+    "emerg..err" "err..emerg" "0..3" "3..0"
+    "emerg..warning" "warning..emerg" "0..4" "4..0"
+    "emerg..notice" "notice..emerg" "0..5" "5..0"
+    "emerg..info" "info..emerg" "0..6" "6..0"
+    "emerg..debug" "debug..emerg" "0..7" "7..0"
+    "alert..crit" "crit..alert" "1..2" "2..1"
+    "alert..err" "err..alert" "1..3" "3..1"
+    "alert..warning" "warning..alert" "1..4" "4..1"
+    "alert..notice" "notice..alert" "1..5" "5..1"
+    "alert..info" "info..alert" "1..6" "6..1"
+    "alert..debug" "debug..alert" "1..7" "7..1"
+    "crit..err" "err..crit" "2..3" "3..2"
+    "crit..warning" "warning..crit" "2..4" "4..2"
+    "crit..notice" "notice..crit" "2..5" "5..2"
+    "crit..info" "info..crit" "2..6" "6..2"
+    "crit..debug" "debug..crit" "2..7" "7..2"
+    "err..warning" "warning..err" "3..4" "4..3"
+    "err..notice" "notice..err" "3..5" "5..3"
+    "err..info" "info..err" "3..6" "6..3"
+    "err..debug" "debug..err" "3..7" "7..3"
+    "warning..notice" "notice..warning" "4..5" "5..4"
+    "warning..info" "info..warning" "4..6" "6..4"
+    "warning..debug" "debug..warning" "4..7" "7..4"
+    "notice..info" "info..notice" "5..6" "6..5"
+    "notice..debug" "debug..notice" "5..7" "7..5"
+    "info..debug" "debug..info" "6..7" "7..6")
+  "List of log-levels / priorities used by journalctl.")
+
+(defvar journalctl-output-fields-list
+  (split-string
+   (shell-command-to-string "journalctl --fields")
+   "[\n]" t " ")
+  "List of output-fields available to journalctl.")
+
+(defvar journalctl-facility-list
+  (split-string
+   (shell-command-to-string "journalctl --facility=help")
+   "[\n]" t " ")
+  "List of facilities available to journalctl.")
+
+(defvar journalctl-follow-timer
+  nil
+  "Timer for follow simulation.")
+
+
+;; functions
 (defun journalctl--disk-usage ()
   "Disk-usage of journalctl."
   (let ((cmd-out (shell-command-to-string "journalctl --disk-usage")))
-    (if (string-match "[0-9.]+G" cmd-out)
+    (if (string-match "[0-9.]+\\(T\\|G\\|M\\)" cmd-out)
         (match-string 0 cmd-out)
       "0G")))
 
-;; functions
+(transient-define-infix journalctl-transient:--lines ()
+		       :description "Limit number of events."
+		       :class 'transient-option
+		       :shortarg "n"
+		       :argument "--lines="
+		       )
 
-(defvar journalctl-list-of-options
-  '("x" "b" "k" "S" "U" "l" "a" "e" "n" "r" "o"  "q" "m" "t" "u" "p"
-   "F" "M" "D"
-   "since" "until" "dmesg" "boot"
-   "system" "user"
-   "unit" "user-unit"
-   "directory" "file" "machine" "root"
-   "nofull" "full" "all"
-   "pagerend"
-   "output"   "outputfields"
-   "utc"
-   "nohostname"
-   "catalog" "quiet"
-   "merge"
-   "identifier" "priority"
-   "fields" )
-  "List of possible options to be given to journalctl without the first dash." )
+(transient-define-infix journalctl-transient:--outputs ()
+		       :description "Controls the formatting."
+		       :class 'transient-option
+		       :shortarg "o o"
+		       :argument "--output="
+		       :choices journalctl-output-list
+		       )
 
-(defun journalctl-parse-options (opt)
- "Parse options (OPT)  given to journalctl."
- (interactive)
- (let ((opt-list nil))
- (let  ((list  (split-string	opt " -" t "[- ]+")))
-    (while list
-      (setq opt-list (cons (split-string   (car list) "[= ]+" t "[ ']*") opt-list))
-      (setq list (cdr list))))
-  ;;  Add function to test the options and maybe values
-  (let ((list opt-list))
-     (while  list
-      (let ((this-opt (car (car list))))
-    (unless (member  this-opt  journalctl-list-of-options)
-      (progn
-	;; skip invalid option
-	(setq opt-list (delete (car list) opt-list))
-	(message "Option %s is not valid and will be skipped."   this-opt))))
-      (setq list (cdr list))))
-  ;;set journalctl-current-opts to  opt-list
-  (setq journalctl-current-opts opt-list)))
+(transient-define-infix journalctl-transient:--field ()
+  :description "Print all values for a specific field."
+  :class 'transient-option
+  :shortarg "o f"
+  :argument "--field="
+  :choices journalctl-output-fields-list
+  )
 
-(defun journalctl-unparse-options ()
- "Join options to  a string, this is given to  journalctl."
- (interactive)
- (let* ((opt " ")
-	(opt-list journalctl-current-opts))
-     (while opt-list
-       (let ((this-opt (car opt-list)))
-	 (if (> (length this-opt) 1) ;; check if option needs a value
-	    (setq opt  (concat opt
-		     (if (> (string-width (car this-opt)) 1) ;; long or short options
-			    (concat "--" (car this-opt) "=");; long option with value
-			    (concat "-" (car this-opt) " "));; short option with value
-		     (let ((value "'")
-			   (value-chunks (cdr this-opt)))
-		       (while value-chunks ;; value may co ntain spaces -> saved as list
-			 (setq value (concat value (car value-chunks) " "))
-			 (setq value-chunks (cdr value-chunks)))
-		       (when (string-equal (substring value  -1) " ") (setq value (substring value 0 -1)))
-		       value)
-		     "' "))
-	   ;; else
-	   (if (> (string-width (car this-opt)) 1) ;; long or short options
-	       (setq opt (concat opt "--" (car this-opt) " "))
-	     (setq opt (concat opt "-" (car this-opt) " ")))))
-       (setq opt-list (cdr opt-list)))
-     (message "%s" opt)))
-     
+(transient-define-infix journalctl-transient:--boot ()
+		       :description "Show boot log."
+		       :class 'transient-option
+		       :shortarg "c b"
+		       :argument "--boot="
+		       :choices journalctl-boot-list
+		       )
 
-;;; Main
-(defun journalctl (&optional opt chunk)
- "Run journalctl with give OPT and present CHUNK of  output in a special buffer.
-If OPT is t the options in 'journalctl-current-opts' are taken."
+(transient-define-infix journalctl-transient:--unit ()
+		       :description "Show log for specific systemd unit."
+		       :class 'transient-option
+		       :shortarg "c u"
+		       :argument "--unit="
+		       :choices journalctl-unit-list
+		       )
+
+(transient-define-infix journalctl-transient:--user-unit ()
+		       :description "Show log for specific systemd user unit."
+		       :class 'transient-option
+		       :shortarg "c U"
+		       :argument "--user-unit="
+		       :choices journalctl-user-unit-list
+		       )
+
+(transient-define-infix journalctl-transient:--priority ()
+		       :description "Filter output by message priorities (ranges)."
+		       :class 'transient-option
+		       :shortarg "c p"
+		       :argument "--priority="
+		       :choices journalctl-priority-list
+		       )
+
+(transient-define-infix journalctl-transient:--identifier ()
+		       :description "Show messages for specified syslog identifier."
+		       :class 'transient-option
+		       :shortarg "c t"
+		       :argument "--identifier="
+		       )
+
+(transient-define-infix journalctl-transient:--facility ()
+		       :description "Filter output by syslog facility."
+		       :class 'transient-option
+		       :shortarg "c f"
+		       :argument "--facility="
+		       :choices journalctl-facility-list
+		       )
+
+(transient-define-infix journalctl-transient:--since ()
+		       :description  "Start showing entries on or newer than the specified date."
+		       :class 'transient-option
+		       :shortarg "S"
+		       :argument "--since="
+		       :prompt "Since (2012-10-30 18:17:16|yesterday|today|now|+|-):"
+		       )
+
+(transient-define-infix journalctl-transient:--until ()
+		       :description  "Start showing entries on or older than the specified date."
+		       :class 'transient-option
+		       :shortarg "U"
+		       :argument "--until="
+		       :prompt "Until (2012-10-30 18:17:16|yesterday|today|now|+|-):"
+		       )
+
+(transient-define-infix journalctl-transient:--machine ()
+		       :description  "Show messages from a running, local container."
+		       :class 'transient-option
+		       :shortarg "s m"
+		       :argument "--machine="
+		       )
+
+(transient-define-infix journalctl-transient:--directory ()
+		       :description  "Directory on which journalctl shall operate."
+		       :class 'transient-option
+		       :shortarg "s d"
+		       :argument "--directory="
+		       )
+
+(transient-define-infix journalctl-transient:--file ()
+		       :description  "File glob on which journalctl shall operate."
+		       :class 'transient-option
+		       :shortarg "s f"
+		       :argument "--file="
+		       )
+
+(transient-define-infix journalctl-transient:--root ()
+		       :description  "Directory root on which journalctl shall operate."
+		       :class 'transient-option
+		       :shortarg "s r"
+		       :argument "--root="
+		       )
+
+(transient-define-infix journalctl-transient:--image ()
+		       :description  "Image file on which journalctl shall operate."
+		       :class 'transient-option
+		       :shortarg "s i"
+		       :argument "--image="
+		       )
+
+(transient-define-infix journalctl-transient:--namespace ()
+		       :description  "namespace on which journalctl shall operate."
+		       :class 'transient-option
+		       :shortarg "s i"
+		       :argument "--namespace="
+		       )
+
+(transient-define-prefix journalctl-transient ()
+  "Transient for journalctl."
+  [["Output"
+   ("o a" " Show all fields in full."
+   ("o l" "Ellipsize fields when they do not fit." "--no-full")
+    "--all")
+   ("o m" "Show entries interleaved from all available journals." "--merge")
+   (journalctl-transient:--field)
+   ("o q" "Suppresses all informational messages." "--quiet")
+   ("o u" "Express time in Coordinated Universal Time (UTC)." "--utc")
+   (journalctl-transient:--outputs)
+   ]
+  ["Sources"
+   (journalctl-transient:--machine)
+   (journalctl-transient:--directory)
+   (journalctl-transient:--file)
+   (journalctl-transient:--root)
+   (journalctl-transient:--image)
+   (journalctl-transient:--namespace)
+   ]]
+  [["Constraint"
+   ("C k" "Show only kernel messages. This implies -b." "--dmesg")
+   ("C s" "Show only system and kernel messages." "--system")
+   ("C u" "Show only system and kernel messages." "--user")
+   (journalctl-transient:--boot)
+   (journalctl-transient:--identifier)
+   (journalctl-transient:--unit)
+   (journalctl-transient:--user-unit)
+   (journalctl-transient:--facility)
+   ]
+  ["Filters"
+   (journalctl-transient:--since)
+   (journalctl-transient:--until)
+   ("r" "Reverse output (newest entries first)." "--reverse")
+   ("x" "Augment log lines with explanations." "--catalog")
+   (journalctl-transient:--lines)
+   ]]
+  ["Aufruf"
+   (journalctl-standard-suffix)
+   (journalctl-close-menu-suffix)
+   (journalctl-follow-suffix)
+   ("q" "Quit journalctl." journalctl-quit)
+   ])
+
+(transient-define-suffix journalctl-standard-suffix ()
+  :transient t
+  :key "SPC"
+  :description "Run journalctl with transient arguments on current chunk. KEEP menu."
   (interactive)
-  (unless (eq opt t)
-  (let ((opt (or opt (read-string "option: " "-x  -n 1000" nil "-x "))))
-    (journalctl-parse-options opt)))
-    (let ((opt (journalctl-unparse-options)))
-    (setq journalctl-current-lines (string-to-number (shell-command-to-string (concat "journalctl " opt "|  wc -l"))))
-    (let* ((this-chunk (or chunk  0)) ;; if chunk is not explicit given, we assume this first (0) chunk
-	         (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
-	         (last-line (if (<= (+ first-line journalctl-chunk-size)
-                              journalctl-current-lines)
-			                    (+ first-line journalctl-chunk-size)
-		                    journalctl-current-lines)))
-      (with-current-buffer (get-buffer-create "*journalctl*")
-        (setq buffer-read-only nil)
-        (fundamental-mode)
-        (erase-buffer))
-      (save-window-excursion
-       (shell-command (concat "journalctl " opt journalctl-current-filter
-                              " | sed -ne '"  (int-to-string first-line) ","
-                              (int-to-string last-line) "p'")
-                      "*journalctl*" "*journalctl-error*"))
-      (switch-to-buffer "*journalctl*")
-      (setq buffer-read-only t)
-;;      (setq journalctl-current-opts opt)
-      (journalctl-mode))))
+  (let ((args (transient-args (oref transient-current-prefix command))))
+  (journalctl--run args journalctl-current-chunk)))
 
+(transient-define-suffix journalctl-follow-suffix ()
+  :transient nil
+  :key "f"
+  :description "Run journalctl with transient arguments on current chunk in follow mode."
+  (interactive)
+  (let ((args (transient-args (oref transient-current-prefix command)))
+	(follow-args (concat "--lines=" journalctl-follow-lines " -e")))
+    (cl-pushnew follow-args args)
+    (setq journalctl-follow-timer
+	  (run-with-timer journalctl-follow-freq journalctl-follow-freq
+			  'journalctl--run args journalctl-current-chunk))))
+
+(transient-define-suffix journalctl-close-menu-suffix ()
+  :transient nil
+  :key "RET"
+  :description "Run journalctl with transient arguments on current chunk. CLOSE menu."
+  (interactive)
+  (let ((args (transient-args (oref transient-current-prefix command))))
+  (journalctl--run args journalctl-current-chunk)))
+
+;; (defun journalctl-opts-to-alist (opt-list)
+;;   "Convert the string of command line parameters into a alist (PARAMETER . OPTION)."
+;;   (mapcar 'car
+;; 	  (mapcar 'cl--plist-to-alist
+;; 		  (mapcar
+;; 		   (lambda
+;; 		     (element)
+;; 		     (string-split element "=" nil))
+;; 		   opt-list))))
+
+(defun journalctl ()
+  "Run journalctl and open transient menu."
+  (interactive)
+  (journalctl--run '("--lines 250"))
+  (sleep-for 0 1) ;; prevent race condition
+  (journalctl--run '(""))
+  (journalctl-transient))
+
+(defun journalctl--run (transient-opts &optional chunk)
+  "Run journalctl with given TRANSIENT-OPTS and present CHUNK of output in a special buffer."
+  (interactive (list (transient-args 'journalctl-transient)))
+  (setq journalctl-current-opts transient-opts)
+  (let* ((opts (mapconcat 'identity transient-opts " "))
+	 (lines (string-to-number (shell-command-to-string (concat "journalctl " opts "| wc -l"))))
+	 (this-chunk (or chunk 0)) ;; if chunk is not explicitly given, we assume the first (0) chunk
+         (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
+         (last-line (if (<= (+ first-line journalctl-chunk-size) journalctl-current-lines)
+                        (+ first-line journalctl-chunk-size)
+                      journalctl-current-lines)))
+    (with-current-buffer (get-buffer-create "*journalctl*")
+      (switch-to-buffer "*journalctl*")
+      (setq buffer-read-only nil)
+      (fundamental-mode)
+      (erase-buffer)
+      (save-window-excursion
+	(shell-command
+	 (concat "journalctl " opts " | sed -ne '"
+		 (int-to-string first-line) ","
+		 (int-to-string last-line) "p'")
+         "*journalctl*" "*journalctl-error*"))
+      (setq buffer-read-only t)
+      (setq journalctl-current-lines lines)
+      (journalctl-mode))))
 
 ;;;;;; Moving and Chunks
 
 (defun journalctl-next-chunk ()
   "Load the next chunk of journalctl output to the buffer."
   (interactive)
-  (let* ((chunk (if  (> (* (+ 2 journalctl-current-chunk) journalctl-chunk-size) journalctl-current-lines)
+  (let* ((chunk (if  (> (* (+ 2 journalctl-current-chunk)
+			   journalctl-chunk-size)
+			journalctl-current-lines)
 		    journalctl-current-chunk
 		  (+ journalctl-current-chunk 1) )))
 	(setq journalctl-current-chunk chunk)
-	(journalctl t  chunk)))
+	(journalctl--run journalctl-current-opts chunk)))
 
 (defun journalctl-previous-chunk ()
   "Load the previous chunk of journalctl output to the buffer."
   (interactive)
-  (let ((chunk (if (>= journalctl-current-chunk 1) (- journalctl-current-chunk 1) 0)))
+  (let ((chunk (if (>= journalctl-current-chunk 1)
+		   (- journalctl-current-chunk 1) 0)))
 	(setq journalctl-current-chunk chunk)
-	(journalctl t  chunk)))
+	(journalctl--run journalctl-current-opts chunk)))
 
 (defun journalctl-scroll-up ()
-  "Scroll up journalctl output or move to next chunk when bottom of frame is reached."
+  "Scroll up journalctl output.
+Move to next chunk when bottom of frame is reached."
   (interactive)
-  (let ((target-line  (+ (current-line) 25)))
+  (let ((target-line (+ (array-current-line) 25)))
     (if (>= target-line journalctl-current-lines)
 	(message "%s" "End of journalctl output")
       (if (>= target-line journalctl-chunk-size)
@@ -267,138 +523,24 @@ If OPT is t the options in 'journalctl-current-opts' are taken."
       (forward-line 25)))))
 
 (defun journalctl-scroll-down ()
-  "Scroll down journalctl output or move to next chunk when bottom of frame is reached."
+  "Scroll down journalctl output.
+Move to next chunk when bottom of frame is reached."
   (interactive)
-  (let ((target-line  (- (current-line) 25)))
+  (let ((target-line (- (array-current-line) 25)))
     (if (<= target-line 0)
 	(if (<=  journalctl-current-chunk 0)
-	    	(message "%s" "Beginn of journalctl output")
-	(journalctl-previous-chunk)))
-      (forward-line  -25)))
+	    (message "%s" "Beginn of journalctl output")
+	  (journalctl-previous-chunk)))
+    (forward-line  -25)))
 
 ;;;;;;;; Special functions
-;;;###autoload
-(defun journalctl-boot (&optional boot)
-  "Select and show boot-log.
-
-If BOOT is provided it is the number of the boot-log to be shown."
+(defun journalctl-quit ()
+  "Quit journalctl session."
   (interactive)
-  (let ((boot-log (or boot (car (split-string
-				 (completing-read "Boot: " (reverse (split-string
-		     (shell-command-to-string "journalctl --list-boots") "[\n]" t " ")) nil t))))))
-    (journalctl (concat "-b '" boot-log "'"))))
-
-;;;###autoload
-(defun journalctl-unit (&optional unit)
-  "Select and show journal for UNIT."
-  (interactive)
-  (let ((unit (or unit (car (split-string
-				 (completing-read "unit: " (split-string
-		     (shell-command-to-string "systemctl list-units --all --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
-    (journalctl (concat "--unit='" unit "'"))))
-
-;;;###autoload
-(defun journalctl-user-unit (&optional unit)
-  "Select and show journal for the user-unit UNIT."
-  (interactive)
-  (let ((unit (or unit (car (split-string
-				 (completing-read "unit: " (split-string
-		     (shell-command-to-string "systemctl list-units --all --user --quiet | awk '{print $1}' | head -n -7 | sed -ne '2,$p'| sed -e '/●/d'") "[\n]" t " ") nil t))))))
-    (journalctl (concat "--user-unit='" unit "'"))))
-
-
-(defun journalctl-add-opt (&optional opt)
-  "Add options to journalctl call.
-
-If OPT is set, use these options."
-  (interactive)
-  (let* ((opt-list nil)
-	(opt (or opt (read-string "option: " "" nil ))))
-    (let  ((list  (split-string	opt " -" t "[- ]+")))
-    (while list
-      (setq opt-list (cons (split-string   (car list) "[= ]+" t "[ ']*") opt-list))
-      (setq list (cdr list))))
-    ;;  Add function to test the options and maybe values
-    (let ((list opt-list))
-      (while  list
-	(let ((this-opt (car (car list))))
-	  ;; delete old option values if given.
-	  (when  (member  this-opt (mapcar (lambda (arg) (car arg)) journalctl-current-opts))
-	    (setq journalctl-current-opts (delq (assoc this-opt journalctl-current-opts)
-						journalctl-current-opts)))
-        (unless (member  this-opt  journalctl-list-of-options)
-	  (progn
-	;; skip invalid option.
-	(setq opt-list (delete (car list) opt-list))
-	(message "Option %s is not valid and will be skipped."   this-opt))))
-      (setq list (cdr list))))
-    ;;add opt-list to  journalctl-current-opts.
-    (setq journalctl-current-opts  (append opt-list journalctl-current-opts)))
-    (journalctl t journalctl-current-chunk))
-
-(defun journalctl-add-since (&optional date)
-  "Add '--since' option with DATE or ask for date."
-  (interactive)
-  (let ((date (or  date
-		   (if  (fboundp 'org-read-date)  (org-read-date t)
-		     (read-string "Date [yy-mm-dd [hh:mm[:ss]]]: ")))))
-     (journalctl-add-opt (concat " --since='" date "'"))))
-
-(defun journalctl-add-until (&optional date)
-  "Add '--until' option with DATE or ask for date."
-  (interactive)
-  (let ((date (or  date
-		   (if  (fboundp 'org-read-date)  (org-read-date t) (read-string "Date [yy-mm-dd [hh:mm[:ss]]]: ")))))
-     (journalctl-add-opt (concat " --until='" date "'"))))
-
-(defun journalctl-add-priority (&optional priority to-priority)
-  "Add '--priority' option with PRIORITY.
-If TO-PRIORITY is non-nil, call '--priority' with range
-from PRIORITY  TO-PRIORITY.
-If none is non-nil it will prompt for priority (range)."
-  (interactive)
-  (let* ((from-priority (or  priority (completing-read "Priority: "
-						 '("emerg" "alert" "crit" "err" "warning" "notice" "info" "debug")
-						 nil t "warning")))
-	 (to-priority (if  priority
-			 (or to-priority nil)
-			(or to-priority  (completing-read "Priority: "
-						 '(("emerg" "alert" "crit" "err" "warning" "notice" "info" "debug"))
-						 nil nil priority))))
-	 (opt (concat "--priority='" from-priority (when to-priority
-						       (unless (string-equal from-priority to-priority) (concat ".." to-priority))) "'")))
-     (journalctl-add-opt opt)))
-
-(defun journalctl-remove-opt (&optional opt)
-  "Remove option from journalctl call.
-
-If OPT is set, remove this option."
-  (interactive)
-  (let* ((opt-list (mapcar (lambda (arg) (car arg)) journalctl-current-opts))
-	 (opt (or opt (completing-read "option: " opt-list  nil t))))
-    (when  (member opt opt-list)
-      (setq journalctl-current-opts (delq (assoc opt journalctl-current-opts) journalctl-current-opts))))
-    (journalctl t journalctl-current-chunk))
-
-(defun journalctl-grep (&optional pattern)
-  "Run journalctl with -grep flag to search for PATTERN."
-  (interactive)
-  (let ((pattern (or pattern (read-string "grep pattern: " nil nil ))))
-    (setq journalctl-current-filter (concat journalctl-current-filter  "| grep '" pattern "'" ))
-    (journalctl journalctl-current-opts journalctl-current-chunk)))
-
-(defun journalctl-remove-filter ()
-  "Remove all filters such as grep from journalctl output."
-  (interactive)
-  (setq journalctl-current-filter "")
-    (journalctl journalctl-current-opts journalctl-current-chunk))
-  
-(defun  journalctl-edit-opts ()
-  "Edit the value of 'journalctl-current-opts'."
-  (interactive)
-  (let ((opt (read-string "Options: " (journalctl-unparse-options))))
-    (journalctl-parse-options opt)
-    (journalctl t journalctl-current-chunk)))
+  (if (timerp journalctl-follow-timer)
+      (cancel-timer journalctl-follow-timer))
+  (setq journalctl-current-chunk 0)
+  (kill-buffer  "*journalctl*"))
 
 
 ;;;;;;;;;;;;;;;;; Fontlock
@@ -407,10 +549,14 @@ If OPT is set, remove this option."
 (defvar journalctl-font-lock-keywords
       (let* (
             ;; generate regex string for each category of keywords
-	     (error-keywords-regexp (regexp-opt journalctl-error-keywords 'words))
-	     (warn-keywords-regexp (regexp-opt journalctl-warn-keywords 'words))
-	     (starting-keywords-regexp (regexp-opt journalctl-starting-keywords 'words))
-	     (finished-keywords-regexp (regexp-opt journalctl-finished-keywords 'words)))
+	     (error-keywords-regexp
+	      (regexp-opt journalctl-error-keywords 'words))
+	     (warn-keywords-regexp
+	      (regexp-opt journalctl-warn-keywords 'words))
+	     (starting-keywords-regexp
+	      (regexp-opt journalctl-starting-keywords 'words))
+	     (finished-keywords-regexp
+	      (regexp-opt journalctl-finished-keywords 'words)))
         `(
           (,warn-keywords-regexp . 'journalctl-warning-face)
           (,error-keywords-regexp . 'journalctl-error-face)
@@ -427,49 +573,38 @@ If OPT is set, remove this option."
 ;; keymap
 (defvar journalctl-mode-map
   (let ((map (make-keymap "journalctl")))
+    (define-key map (kbd "+") 'journalctl)
+    (define-key map (kbd "-") 'journalctl)
+    ;;
     (define-key map (kbd "n") 'journalctl-next-chunk)
     (define-key map (kbd "p") 'journalctl-previous-chunk)
-    ;; add opts
-    (define-key map (kbd "+ +")  'journalctl-add-opt)
-    (define-key map (kbd "+ r")  (lambda () (interactive) (journalctl-add-opt "r" )));; reverse output
-    (define-key map (kbd "+ x")  (lambda () (interactive) (journalctl-add-opt "x" )));; add explanations
-    (define-key map (kbd "+ s")  (lambda () (interactive) (journalctl-add-opt "system" )));; system-units only
-    (define-key map (kbd "+ u")  (lambda () (interactive) (journalctl-add-opt "user" )));; user-units only
-    (define-key map (kbd "+ k")  (lambda () (interactive) (journalctl-add-opt "dmesg" )));; user-units only
-    (define-key map (kbd "+ S")  'journalctl-add-since)
-    (define-key map (kbd "+ U")  'journalctl-add-until)
-    (define-key  map (kbd "+ p")  'journalctl-add-priority)
-    ;; remove opts
-    (define-key map (kbd "- -")  'journalctl-remove-opt)
-    (define-key map (kbd "- r")  (lambda () (interactive) (journalctl-remove-opt "r" )));; reverse output
-    (define-key map (kbd "- x")  (lambda () (interactive) (journalctl-remove-opt "x" )));; remove explanations
-    (define-key map (kbd "- s")  (lambda () (interactive) (journalctl-remove-opt "system" )));; system-units only
-    (define-key map (kbd "- u")  (lambda () (interactive) (journalctl-remove-opt "user" )));; user-units only
-    (define-key map (kbd "- k")  (lambda () (interactive) (journalctl-remove-opt "dmesg" )));; user-units only
-    (define-key map (kbd "- S")  (lambda () (interactive) (journalctl-remove-opt "since" )))
-    (define-key map (kbd "- U")  (lambda () (interactive) (journalctl-remove-opt "until" )))
-    (define-key  map (kbd "- p")  (lambda () (interactive) (journalctl-remove-opt "priority" )))
-    ;;  edit opts
-    (define-key map (kbd "e") 'journalctl-edit-opts)
-    ;; grep
-    (define-key map (kbd "+ g")  'journalctl-grep)
-    (define-key map (kbd "- g")  'journalctl-remove-filter)
     ;;
     (define-key map (kbd "C-v") 'journalctl-scroll-up)
     (define-key map (kbd "M-v") 'journalctl-scroll-down)
-    (define-key map (kbd "q")  (lambda () (interactive) (kill-buffer  "*journalctl*")))
+    (define-key map (kbd "q")  'journalctl-quit)
     map)
   "Keymap for journalctl mode.")
 
+(defvar mode-line-process nil "Process status in the mode line.")
+(defvar font-lock-defaults nil "Defaults for Font Lock mode specified by the major mode.")
+
 ;;;###autoload
 (define-derived-mode journalctl-mode fundamental-mode "journalctl"
-  "Major mode for viewing journalctl output"
-  (setq mode-line-process (concat " (disk usage: " (journalctl--disk-usage) ")"))
+  "Major mode for viewing journalctl output."
+  (setq mode-line-process
+	(concat " (disk usage: "
+		(journalctl--disk-usage)
+		")"))
   ;; code for syntax highlighting
   (setq font-lock-defaults '((journalctl-font-lock-keywords))))
 
 
-;; add the mode to the `features' list
+;; add the mode to the `features` list
 (provide 'journalctl-mode)
 
 ;;; journalctl-mode.el ends here
+
+;; Local Variables:
+;; jinx-languages: "en"
+;; jinx-local-words: "journalctl"
+;; End:

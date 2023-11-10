@@ -1,69 +1,74 @@
-* Journalctl-mode
+#+TITLE: journalctl-mode.el
+#+AUTHOR: Sebastian Meisel
+#+EMAIL: sebastian.meisel@gmail.com
+#+VERSION: 1.0
+#+STARTUP: indent
+#+LANGUAGE: en
+#+OPTIONS: toc:nil num:nil ^:nil -:nil f:t *:t <:t
 
-This is a major-mode for emacs to view systemd's journalctl output in emacs.
-The output is split into chunks for performance reasons. 
+* Introduction
+  This Emacs major mode is designed for viewing the output from systemd's journalctl within Emacs. It provides a convenient way to interact with journalctl logs, including features like fontification, chunked loading for performance, and custom keyword highlighting.
 
-Fontification is provided and may be customized.
+* Installation
+  To install, place =journalctl-mode.el= in your load-path and add the following to your .emacs file:
 
-At the moment it is still in very early development. Please give feedback on any problems that occure.
+  #+BEGIN_SRC emacs-lisp
+    (require 'journalctl-mode)
+  #+END_SRC
 
-[[./journalctl-mode.08.gif]]
+  Alternatively, you can install =journalctl-mode= using the =use-package= macro with Quelpa for automatic installation from the GitHub repository:
 
-** Installation  
+  #+BEGIN_SRC emacs-lisp
+    (use-package journalctl-mode
+      :quelpa (journalctl-mode
+               :fetcher github
+               :repo "SebastianMeisel/journalctl-mode"
+               :branch "transient"
+               :upgrade t))
+  #+END_SRC
 
-*** With use-package
+* Features
+  - Fontification: Customize the appearance of log levels with faces.
+  - Chunked Loading: Load journalctl output in manageable chunks for better performance.
+  - Keyword Highlighting: Define custom keywords for error, warning, and other log levels.
+  - Follow Mode: Simulate tail -f functionality to keep up with new log entries.
 
-You can install `journalctl-mode` from MELPA, for example with:
-#+BEGIN_SRC  emacs-lisp
-(use-package journalctl-mode
-:ensure t)
-#+END_SRC
+* Usage
+  Once installed, =journalctl-mode= can be invoked with =M-x journalctl=.
+  The mode provides a transient interface for journalctl command-line options, allowing for dynamic and flexible log viewing.
 
-*** Manual
+* Customization
+  Customize the mode to your liking by setting the following variables:
 
-Clone the project or download `journalctl-mode.el` and put that file to a load-path.
+  - =journalctl-chunk-size=: Number of lines per chunk (default 250).
+  - =journalctl-error-keywords=: List of keywords to highlight as errors.
+  - =journalctl-warn-keywords=: List of keywords to highlight as warnings.
+  - =journalctl-starting-keywords=: Keywords for starting processes.
+  - =journalctl-finished-keywords=: Keywords for finished processes.
+  - =journalctl-follow-freq=: Frequency for updating in follow mode.
+  - =journalctl-follow-lines=: Number of lines to show in follow mode.
 
-Put  
-down 
-#+BEGIN_SRC  emacs-lisp
-( require 'journalctl-mode) 
-#+END_SRC
+* Key Bindings
+  | Key   | Action                             |
+  |-------+------------------------------------|
+  | n     | Load next chunk of journalctl output |
+  | p     | Load previous chunk of journalctl output |
+  | C-v   | Scroll up in the buffer             |
+  | M-v   | Scroll down in the buffer           |
+  | q     | Quit journalctl mode                |
 
-in your .emacs file.
+* Other Packages
+There is another package [[https://github.com/WJCFerguson/journalctl][journalctl]] (rather than journalctl-mode) by James Ferguson that fetches and interleaves JSON data using multiple simultaneous asynchronous journalctl queries, while mine offers a UI for query-building and chunked synchronous data loading.
 
-** Usage
+* License
+  This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
 
-At the moment there are to functions provided to call journalctl: 
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
--   journalctl: will ask for commandline options like "-xe" and show the output in the  \ast{}journalctl\ast{} buffer.
-- journalctl-boot: will provide you with the list of boots in the journal. You can choose one and view it in the buffer.
-- journalctl-unit: will provide you with the list of units . You can choose one and view related logs  in the buffer.
-- journalctl-user-unit: will provide you with the list of user-units . You can choose one and view related logs  in the buffer.
+  You should have received a copy of the GNU General Public License along with this program. If not, see [[https://www.gnu.org/licenses/]].
 
-In journalctl-mode you can navigate between the cunks with "n" (next chunk) and "p" (previous chunk).
-I also redefined C-v and M-v so that it will move to the next chunk, when you have reached the bottom or top of the buffer.
+* Support
+  For support, feedback, or to contribute to the project, please visit the homepage at [[https://github.com/SebastianMeisel/journalctl-mode]].
 
-You can add options from journalctl-mode with "+ +" and remove them with "- -". 
-
-There are also some keybindings to add options: 
-
-- "+ r" : Reverse output (--reverse).
-- "+ x": Augment log lines with explanation texts from the message catalog.  (--catalog).
-- "+ s": Show  messages from system services and the kernel  only (--system).
-- "+ u": Show messages from service of current user only (--user).
-- "+ k": Show kernel message only (--dmesg). This applies "-b".
-
-- "+ p"  prompt for priority range and show the respective messages  (--priority).
-
-- "+ S": Show messages since given date and / or time (--since).
-- "+ U": Show messages until given date and / or time (--until).
-
-When you replace the  "+" with a "-" for each option (like "- r") you remove it.
-
-You can edit the current options with "e".
-
-You can grep on the current output of journalctl with "+ g". You will be asked for a pattern to grep.
-
-You can remove all filters (grep) with "- -".
-
-Type "q" to kill the "\ast{}journalctl\ast{}" buffer.
+* Acknowledgements
+  Thanks to all contributors and users for their support and feedback which continue to improve this mode.
