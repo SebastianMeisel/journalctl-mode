@@ -463,12 +463,12 @@ It controls the formatting of the journal entries that are shown.")
 ;; (defun journalctl-opts-to-alist (opt-list)
 ;;   "Convert the string of command line parameters into a alist (PARAMETER . OPTION)."
 ;;   (mapcar 'car
-;; 	  (mapcar 'cl--plist-to-alist
-;; 		  (mapcar
-;; 		   (lambda
-;; 		     (element)
-;; 		     (string-split element "=" nil))
-;; 		   opt-list))))
+;;	  (mapcar 'cl--plist-to-alist
+;;		  (mapcar
+;;		   (lambda
+;;		     (element)
+;;		     (string-split element "=" nil))
+;;		   opt-list))))
 
 (defun journalctl ()
   "Run journalctl and open transient menu."
@@ -519,21 +519,20 @@ It controls the formatting of the journal entries that are shown.")
                                (insert string)
                                (set-marker (process-mark proc) (point)))
 			     (if moving (goto-char (process-mark proc)))
-			     (goto-char (point-min))))
-			     (journalctl-mode))))))))
+			     (goto-char (point-min)))
+			     (journalctl-mode)))))))))
 
 ;;;;;; Moving and Chunks
 
 (defun journalctl-next-chunk ()
   "Load the next chunk of journalctl output to the buffer."
   (interactive)
-  (let* ((chunk (if  (> (* (+ 2 journalctl-current-chunk)
-			   journalctl-chunk-size)
-			journalctl-current-lines)
+  (let* ((buffer-lines (car (buffer-line-statistics "*journalctl*")))
+	 (chunk (if  (<= buffer-lines journalctl-chunk-size)
 		    journalctl-current-chunk
-		  (+ journalctl-current-chunk 1) )))
-	(setq journalctl-current-chunk chunk)
-	(journalctl--run journalctl-current-opts chunk)))
+		  (+ journalctl-current-chunk 1))))
+    (setq journalctl-current-chunk chunk)
+    (journalctl--run journalctl-current-opts chunk)))
 
 (defun journalctl-previous-chunk ()
   "Load the previous chunk of journalctl output to the buffer."
@@ -543,20 +542,21 @@ It controls the formatting of the journal entries that are shown.")
 	(setq journalctl-current-chunk chunk)
 	(journalctl--run journalctl-current-opts chunk)))
 
-(defun journalctl-scroll-up ()
+(defun journalctl-scroll-down ()
   "Scroll up journalctl output.
 Move to next chunk when bottom of frame is reached."
   (interactive)
-  (let ((target-line (+ (array-current-line) 25)))
-    (if (>= target-line journalctl-current-lines)
-	(message "%s" "End of journalctl output")
-      (if (>= target-line journalctl-chunk-size)
+  (let ((target-line (+ (array-current-line) 25))
+	(buffer-lines (car (buffer-line-statistics "*journalctl*"))))
+    (if (<= buffer-lines (- journalctl-chunk-size 1))
+	(message "End of journalctl output"))
+    (if (>= target-line journalctl-chunk-size)
 	(journalctl-next-chunk)
-      (forward-line 25)))))
+      (forward-line 25))))
 
-(defun journalctl-scroll-down ()
-  "Scroll down journalctl output.
-Move to next chunk when bottom of frame is reached."
+(defun journalctl-scroll-up ()
+  "Scroll up journalctl output.
+Move to next chunk when top of frame is reached."
   (interactive)
   (let ((target-line (- (array-current-line) 25)))
     (if (<= target-line 0)
@@ -589,15 +589,13 @@ Move to next chunk when bottom of frame is reached."
 	      (regexp-opt journalctl-starting-keywords 'words))
 	     (finished-keywords-regexp
 	      (regexp-opt journalctl-finished-keywords 'words)))
-        `(
-          (,warn-keywords-regexp . 'journalctl-warning-face)
+        `((,warn-keywords-regexp . 'journalctl-warning-face)
           (,error-keywords-regexp . 'journalctl-error-face)
           (,starting-keywords-regexp . 'journalctl-starting-face)
           (,finished-keywords-regexp . 'journalctl-finished-face)
 	  ("^\\([A-Z][a-z]+ [0-9]+ [0-9:]+\\)" . (1 'journalctl-timestamp-face))
 	  ("^\\([A-Z][a-z]+ [0-9]+ [0-9:]+\\) \\([-a-zA-Z]+\\)" . (2 'journalctl-host-face))
 	  ("^\\([A-Z][a-z]+ [0-9]+ [0-9:]+\\) \\([-a-zA-Z]+\\) \\(.*?:\\)" . (3 'journalctl-process-face))
-
           ;; note: order above matters, because once colored, that part won't change.
           ;; in general, put longer words first
           )))
@@ -611,8 +609,8 @@ Move to next chunk when bottom of frame is reached."
     (define-key map (kbd "n") 'journalctl-next-chunk)
     (define-key map (kbd "p") 'journalctl-previous-chunk)
     ;;
-    (define-key map (kbd "C-v") 'journalctl-scroll-up)
-    (define-key map (kbd "M-v") 'journalctl-scroll-down)
+    (define-key map (kbd "C-v") 'journalctl-scroll-down)
+    (define-key map (kbd "M-v") 'journalctl-scroll-up)
     (define-key map (kbd "q")  'journalctl-quit)
     map)
   "Keymap for journalctl mode.")
