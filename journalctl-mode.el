@@ -49,12 +49,8 @@
 
 (defcustom journalctl-chunk-size
   250
-<<<<<<< variant A
   "Number of lines of journalctl output that are
   loaded in the buffer. You can navigate."
->>>>>>> variant B
-  "Number of lines of journalctl output."
-======= end
   :group 'journalctl
   :type 'integer)
 
