@@ -458,10 +458,6 @@ It controls the formatting of the journal entries that are shown.")
 	   (shell-command-to-string
 	    (concat "journalctl " opts "| wc -l"))))
     (journalctl--run args journalctl-current-chunk))
-  (save-excursion
-    (if (re-search-forward "Process journalctl" nil t)
-	(delete-region (match-beginning 0) (match-end 0)))
-    )
     (setq buffer-read-only t))
 
 ;; (defun journalctl-opts-to-alist (opt-list)
@@ -512,6 +508,7 @@ It controls the formatting of the journal entries that are shown.")
 	     :command command
 	     :stderr (get-buffer-create "*journalctl-errors*")
 	     :file-handler t
+	     :sentinel #'ignore
 	     :filter (lambda (proc string)
 		       (when (buffer-live-p (process-buffer proc))
 			 (with-current-buffer (process-buffer proc)
@@ -522,13 +519,8 @@ It controls the formatting of the journal entries that are shown.")
                                (insert string)
                                (set-marker (process-mark proc) (point)))
 			     (if moving (goto-char (process-mark proc)))
-			     (goto-char (point-min))))))))
-			     (journalctl-mode))
-      (save-excursion
-	(if (re-search-backward "" nil t)
-	    (delete-region (match-beginning 0) (match-end 0)))
-	(if (re-search-forward "" nil t)
-	    (delete-region (match-beginning 0) (match-end 0))))))
+			     (goto-char (point-min))))
+			     (journalctl-mode))))))))
 
 ;;;;;; Moving and Chunks
 
