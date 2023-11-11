@@ -457,7 +457,12 @@ It controls the formatting of the journal entries that are shown.")
 	  (string-to-number
 	   (shell-command-to-string
 	    (concat "journalctl " opts "| wc -l"))))
-    (journalctl--run args journalctl-current-chunk)))
+    (journalctl--run args journalctl-current-chunk))
+  (save-excursion
+    (if (re-search-forward "Process journalctl" nil t)
+	(delete-region (match-beginning 0) (match-end 0)))
+    )
+    (setq buffer-read-only t))
 
 ;; (defun journalctl-opts-to-alist (opt-list)
 ;;   "Convert the string of command line parameters into a alist (PARAMETER . OPTION)."
@@ -472,7 +477,7 @@ It controls the formatting of the journal entries that are shown.")
 (defun journalctl ()
   "Run journalctl and open transient menu."
   (interactive)
-  (journalctl--run '(""))
+  (journalctl--run '("--lines=250"))
   (journalctl-transient))
 
 (defun journalctl--run (transient-opts &optional chunk)
@@ -505,6 +510,8 @@ It controls the formatting of the journal entries that are shown.")
 	     :name "journalctl"
 	     :buffer "*journalctl*"
 	     :command command
+	     :stderr (get-buffer-create "*journalctl-errors*")
+	     :file-handler t
 	     :filter (lambda (proc string)
 		       (when (buffer-live-p (process-buffer proc))
 			 (with-current-buffer (process-buffer proc)
@@ -516,10 +523,12 @@ It controls the formatting of the journal entries that are shown.")
                                (set-marker (process-mark proc) (point)))
 			     (if moving (goto-char (process-mark proc)))
 			     (goto-char (point-min))))))))
-      (while (re-search-backward "Process journalctl finished" nil t)
-	(delete-region (match-beginning 0) (match-end 0)))
-      (setq buffer-read-only t)
-      (journalctl-mode))))
+			     (journalctl-mode))
+      (save-excursion
+	(if (re-search-backward "" nil t)
+	    (delete-region (match-beginning 0) (match-end 0)))
+	(if (re-search-forward "" nil t)
+	    (delete-region (match-beginning 0) (match-end 0))))))
 
 ;;;;;; Moving and Chunks
 
