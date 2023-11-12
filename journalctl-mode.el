@@ -3,8 +3,8 @@
 ;; Copyright © 2020, by Sebastian Meisel
 
 ;; Author: Sebastian Meisel <sebastian.meisel@gmail.com>
-;; Version: 1.0
-;; Created:  November 10, 2023
+;; Version: 1.1
+;; Created:  November 12, 2023
 ;; Keywords: unix
 ;; Homepage: https://github.com/SebastianMeisel/journalctl-mode
 ;; Package-Requires: ((emacs "27.1"))
@@ -32,7 +32,13 @@
 ;; This is a major-mode for Emacs to view systemd's journalctl output in Emacs.
 ;; The output is split into chunks for performance reasons.
 ;; Fontification is provided and may be customized.
-;; At the moment it is still in very early development.  Please give feedback on any problems that occur.
+;; Please give feedback on any problems that occur.
+
+;; Version: 1.1 New features:
+;; Much improved performance.
+;; transient menu
+;; asynchronous process
+;; No pre-run of journalctl to determin number of output lines.
 
 ;; Put journalctl-mode.el in your load-path and add   ( require 'journalctl-mode)  to your .emacs file.
 
@@ -131,11 +137,6 @@
 (defvar journalctl-current-chunk
   0
   "Counter for chunks of journalctl output loaded into the *journalctl*-buffer.")
-
-(defvar journalctl-current-lines
-  0
-  "Number of lines  of journalctl output with current opts.")
-
 
 (defvar journalctl-current-opts
   ""
@@ -255,6 +256,14 @@ It controls the formatting of the journal entries that are shown.")
 		       :shortarg "n"
 		       :argument "--lines="
 		       )
+
+(transient-define-infix journalctl-transient:--grep ()
+		       :description "Grep for a pattern."
+		       :class 'transient-option
+		       :shortarg "g"
+		       :argument "--grep="
+		       )
+
 
 (transient-define-infix journalctl-transient:--outputs ()
 		       :description "Controls the formatting."
@@ -413,6 +422,7 @@ It controls the formatting of the journal entries that are shown.")
    ("r" "Reverse output (newest entries first)." "--reverse")
    ("x" "Augment log lines with explanations." "--catalog")
    (journalctl-transient:--lines)
+   (journalctl-transient:--grep)
    ]]
   ["Aufruf"
    (journalctl-standard-suffix)
@@ -426,12 +436,7 @@ It controls the formatting of the journal entries that are shown.")
   :key "SPC"
   :description "Run journalctl with transient arguments on current chunk. KEEP menu."
   (interactive)
-  (let* ((args (transient-args (oref transient-current-prefix command)))
-	(opts (mapconcat 'identity args " ")))
-    (setq journalctl-current-lines
-	  (string-to-number
-	   (shell-command-to-string
-	    (concat "journalctl " opts "| wc -l"))))
+  (let* ((args (transient-args (oref transient-current-prefix command))))
     (journalctl--run args journalctl-current-chunk)))
 
 (transient-define-suffix journalctl-follow-suffix ()
@@ -451,12 +456,7 @@ It controls the formatting of the journal entries that are shown.")
   :key "RET"
   :description "Run journalctl with transient arguments on current chunk. CLOSE menu."
   (interactive)
-  (let* ((args (transient-args (oref transient-current-prefix command)))
-	 (opts (mapconcat 'identity args " ")))
-    (setq journalctl-current-lines
-	  (string-to-number
-	   (shell-command-to-string
-	    (concat "journalctl " opts "| wc -l"))))
+  (let* ((args (transient-args (oref transient-current-prefix command))))
     (journalctl--run args journalctl-current-chunk))
     (setq buffer-read-only t))
 
@@ -481,13 +481,9 @@ It controls the formatting of the journal entries that are shown.")
   (interactive (list (transient-args 'journalctl-transient)))
   (setq journalctl-current-opts transient-opts)
   (let* ((opts (mapconcat 'identity transient-opts " "))
-	 (lines  journalctl-current-lines)
 	 (this-chunk (or chunk 0)) ;; if chunk is not explicitly given, we assume the first (0) chunk
          (first-line (+ 1 (* this-chunk journalctl-chunk-size)))
-         (last-line (if (<= (+ first-line journalctl-chunk-size)
-			    journalctl-current-lines)
-                        (+ first-line journalctl-chunk-size)
-                      journalctl-current-lines))
+         (last-line (+ first-line journalctl-chunk-size))
 	 (command `("bash"
 		      "-c"
 		      ,(concat "journalctl "
@@ -531,8 +527,11 @@ It controls the formatting of the journal entries that are shown.")
 	 (chunk (if  (<= buffer-lines journalctl-chunk-size)
 		    journalctl-current-chunk
 		  (+ journalctl-current-chunk 1))))
-    (setq journalctl-current-chunk chunk)
-    (journalctl--run journalctl-current-opts chunk)))
+    (if (= chunk journalctl-current-chunk)
+	(message "%s" "End of journalctl output")
+      (progn
+	(setq journalctl-current-chunk chunk)
+	(journalctl--run journalctl-current-opts chunk)))))
 
 (defun journalctl-previous-chunk ()
   "Load the previous chunk of journalctl output to the buffer."
@@ -549,7 +548,7 @@ Move to next chunk when bottom of frame is reached."
   (let ((target-line (+ (array-current-line) 25))
 	(buffer-lines (car (buffer-line-statistics "*journalctl*"))))
     (if (<= buffer-lines (- journalctl-chunk-size 1))
-	(message "End of journalctl output"))
+	(message "%s" "End of journalctl output"))
     (if (>= target-line journalctl-chunk-size)
 	(journalctl-next-chunk)
       (forward-line 25))))
