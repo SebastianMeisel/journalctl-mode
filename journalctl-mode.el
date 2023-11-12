@@ -477,7 +477,7 @@ It controls the formatting of the journal entries that are shown.")
   (journalctl-transient))
 
 (defun journalctl--run (transient-opts &optional chunk)
-  "Run journalctl with given TRANSIENT-OPTS and present CHUNK of output in a special buffer."
+  "Run journalctl with given TRANSIENT-OPTS and present CHUNK in a special buffer."
   (interactive (list (transient-args 'journalctl-transient)))
   (setq journalctl-current-opts transient-opts)
   (let* ((opts (mapconcat 'identity transient-opts " "))
