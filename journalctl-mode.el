@@ -84,14 +84,8 @@
   :group 'journalctl
   :type 'string)
 
-(defcustom journalctl-follow-freq
-  0.1
-  "Frequency in seconds for follow simulation."
-  :group 'journalctl
-  :type 'float)
-
 (defcustom journalctl-follow-lines
-  "30"
+  "240"
   "Number of lines for follow simulation."
   :group 'journalctl
   :type 'string)
@@ -445,11 +439,11 @@ It controls the formatting of the journal entries that are shown.")
   :description "Run journalctl with transient arguments on current chunk in follow mode."
   (interactive)
   (let ((args (transient-args (oref transient-current-prefix command)))
-	(follow-args (concat "--lines=" journalctl-follow-lines " -e")))
+	(follow-args (concat "--lines=" journalctl-follow-lines " -f")))
     (cl-pushnew follow-args args)
-    (setq journalctl-follow-timer
-	  (run-with-timer journalctl-follow-freq journalctl-follow-freq
-			  'journalctl--run args journalctl-current-chunk))))
+;;    (setq journalctl-follow-timer
+;;	  (run-with-timer journalctl-follow-freq journalctl-follow-freq
+    (journalctl--follow args)))
 
 (transient-define-suffix journalctl-close-menu-suffix ()
   :transient nil
@@ -517,6 +511,44 @@ It controls the formatting of the journal entries that are shown.")
 			     (if moving (goto-char (process-mark proc)))
 			     (goto-char (point-min)))
 			     (journalctl-mode)))))))))
+
+(defun journalctl--follow (transient-opts)
+  "Run journalctl with given TRANSIENT-OPTS and follow the output."
+  (interactive (list (transient-args 'journalctl-transient)))
+  (setq journalctl-current-opts transient-opts)
+  (let* ((opts (mapconcat 'identity transient-opts " "))
+	 (command `("bash"
+		      "-c"
+		      ,(concat "journalctl "
+			      opts))))
+    (with-current-buffer (get-buffer-create "*journalctl*")
+      (switch-to-buffer "*journalctl*")
+      (journalctl-mode)
+      (setq buffer-read-only nil)
+      (erase-buffer)
+      (setq journalctl-process
+	    (make-process
+	     :name "journalctl"
+	     :buffer "*journalctl*"
+	     :command command
+	     :stderr (get-buffer-create "*journalctl-errors*")
+	     :file-handler t
+	     :sentinel #'ignore
+	     :filter (lambda (proc string)
+		       (when (buffer-live-p (process-buffer proc))
+			 (with-current-buffer (process-buffer proc)
+			   (setq buffer-read-only nil)
+			   (let ((moving (= (point) (process-mark proc))))
+			     (save-excursion
+                               (goto-char (process-mark proc))
+                               (insert string)
+                               (set-marker (process-mark proc) (point)))
+			     (if moving (goto-char (process-mark proc)))
+			     (if (> (array-current-line)
+				     journalctl-chunk-size)
+				 (save-excursion
+				   (goto-char (point-min))
+				   (kill-line (/ journalctl-chunk-size 10)))))))))))))
 
 ;;;;;; Moving and Chunks
 
