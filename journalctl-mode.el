@@ -268,7 +268,7 @@ It controls the formatting of the journal entries that are shown.")
 		       )
 
 (transient-define-infix journalctl-transient:--field ()
-  :description "Print all values for a specific field."
+  :description "Values for a specific field."
   :class 'transient-option
   :shortarg "o f"
   :argument "--field="
@@ -276,7 +276,7 @@ It controls the formatting of the journal entries that are shown.")
   )
 
 (transient-define-infix journalctl-transient:--boot ()
-		       :description "Show boot log."
+		       :description "Boot log."
 		       :class 'transient-option
 		       :shortarg "c b"
 		       :argument "--boot="
@@ -284,7 +284,7 @@ It controls the formatting of the journal entries that are shown.")
 		       )
 
 (transient-define-infix journalctl-transient:--unit ()
-		       :description "Show log for specific systemd unit."
+		       :description "Specific systemd unit."
 		       :class 'transient-option
 		       :shortarg "c u"
 		       :argument "--unit="
@@ -292,7 +292,7 @@ It controls the formatting of the journal entries that are shown.")
 		       )
 
 (transient-define-infix journalctl-transient:--user-unit ()
-		       :description "Show log for specific systemd user unit."
+		       :description "Specific systemd user unit."
 		       :class 'transient-option
 		       :shortarg "c U"
 		       :argument "--user-unit="
@@ -300,7 +300,7 @@ It controls the formatting of the journal entries that are shown.")
 		       )
 
 (transient-define-infix journalctl-transient:--priority ()
-		       :description "Filter output by message priorities (ranges)."
+		       :description "Filter by priorities (ranges)."
 		       :class 'transient-option
 		       :shortarg "c p"
 		       :argument "--priority="
@@ -308,14 +308,14 @@ It controls the formatting of the journal entries that are shown.")
 		       )
 
 (transient-define-infix journalctl-transient:--identifier ()
-		       :description "Show messages for specified syslog identifier."
+		       :description "Specified syslog identifier."
 		       :class 'transient-option
 		       :shortarg "c t"
 		       :argument "--identifier="
 		       )
 
 (transient-define-infix journalctl-transient:--facility ()
-		       :description "Filter output by syslog facility."
+		       :description "Specific syslog facility."
 		       :class 'transient-option
 		       :shortarg "c f"
 		       :argument "--facility="
@@ -323,7 +323,7 @@ It controls the formatting of the journal entries that are shown.")
 		       )
 
 (transient-define-infix journalctl-transient:--since ()
-		       :description  "Start showing entries on or newer than the specified date."
+		       :description  "Entries on or newer than date."
 		       :class 'transient-option
 		       :shortarg "S"
 		       :argument "--since="
@@ -331,7 +331,7 @@ It controls the formatting of the journal entries that are shown.")
 		       )
 
 (transient-define-infix journalctl-transient:--until ()
-		       :description  "Start showing entries on or older than the specified date."
+		       :description  "Entries on or older than date."
 		       :class 'transient-option
 		       :shortarg "U"
 		       :argument "--until="
@@ -339,42 +339,42 @@ It controls the formatting of the journal entries that are shown.")
 		       )
 
 (transient-define-infix journalctl-transient:--machine ()
-		       :description  "Show messages from a running, local container."
+		       :description  "Messages from running, local container."
 		       :class 'transient-option
 		       :shortarg "s m"
 		       :argument "--machine="
 		       )
 
 (transient-define-infix journalctl-transient:--directory ()
-		       :description  "Directory on which journalctl shall operate."
+		       :description  "Directory to operate on."
 		       :class 'transient-option
 		       :shortarg "s d"
 		       :argument "--directory="
 		       )
 
 (transient-define-infix journalctl-transient:--file ()
-		       :description  "File glob on which journalctl shall operate."
+		       :description  "File glob to operate on."
 		       :class 'transient-option
 		       :shortarg "s f"
 		       :argument "--file="
 		       )
 
 (transient-define-infix journalctl-transient:--root ()
-		       :description  "Directory root on which journalctl shall operate."
+		       :description  "Directory root to operate on."
 		       :class 'transient-option
 		       :shortarg "s r"
 		       :argument "--root="
 		       )
 
 (transient-define-infix journalctl-transient:--image ()
-		       :description  "Image file on which journalctl shall operate."
+		       :description  "Image file to operate on."
 		       :class 'transient-option
 		       :shortarg "s i"
 		       :argument "--image="
 		       )
 
 (transient-define-infix journalctl-transient:--namespace ()
-		       :description  "namespace on which journalctl shall operate."
+		       :description  "Namespace to operate on."
 		       :class 'transient-option
 		       :shortarg "s i"
 		       :argument "--namespace="
@@ -383,13 +383,12 @@ It controls the formatting of the journal entries that are shown.")
 (transient-define-prefix journalctl-transient ()
   "Transient for journalctl."
   [["Output"
-   ("o a" " Show all fields in full."
+   ("o a" "All fields in full." "--all")
    ("o l" "Ellipsize fields when they do not fit." "--no-full")
-    "--all")
-   ("o m" "Show entries interleaved from all available journals." "--merge")
+   ("o m" "Entries interleaved from all available journals." "--merge")
    (journalctl-transient:--field)
    ("o q" "Suppresses all informational messages." "--quiet")
-   ("o u" "Express time in Coordinated Universal Time (UTC)." "--utc")
+   ("o u" "Express time in UTC." "--utc")
    (journalctl-transient:--outputs)
    ]
   ["Sources"
@@ -401,9 +400,9 @@ It controls the formatting of the journal entries that are shown.")
    (journalctl-transient:--namespace)
    ]]
   [["Constraint"
-   ("C k" "Show only kernel messages. This implies -b." "--dmesg")
-   ("C s" "Show only system and kernel messages." "--system")
-   ("C u" "Show only system and kernel messages." "--user")
+   ("C k" "Kernel messages only. This implies -b." "--dmesg")
+   ("C s" "System and kernel messages only." "--system")
+   ("C u" "User  messages only." "--user")
    (journalctl-transient:--boot)
    (journalctl-transient:--identifier)
    (journalctl-transient:--unit)
@@ -428,7 +427,7 @@ It controls the formatting of the journal entries that are shown.")
 (transient-define-suffix journalctl-standard-suffix ()
   :transient t
   :key "SPC"
-  :description "Run journalctl with transient arguments on current chunk. KEEP menu."
+  :description "Run journalctl - KEEP menu."
   (interactive)
   (let* ((args (transient-args (oref transient-current-prefix command))))
     (journalctl--run args journalctl-current-chunk)))
@@ -436,7 +435,7 @@ It controls the formatting of the journal entries that are shown.")
 (transient-define-suffix journalctl-follow-suffix ()
   :transient nil
   :key "f"
-  :description "Run journalctl with transient arguments on current chunk in follow mode."
+  :description "Run journalctl in FOLLOW mode."
   (interactive)
   (let ((args (transient-args (oref transient-current-prefix command)))
 	(follow-args (concat "--lines=" journalctl-follow-lines " -f")))
@@ -448,7 +447,7 @@ It controls the formatting of the journal entries that are shown.")
 (transient-define-suffix journalctl-close-menu-suffix ()
   :transient nil
   :key "RET"
-  :description "Run journalctl with transient arguments on current chunk. CLOSE menu."
+  :description "Run journalctl - CLOSE menu."
   (interactive)
   (let* ((args (transient-args (oref transient-current-prefix command))))
     (journalctl--run args journalctl-current-chunk))
