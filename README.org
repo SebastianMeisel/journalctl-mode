@@ -9,6 +9,8 @@
 * Introduction
   This Emacs major mode is designed for viewing the output from systemd's journalctl within Emacs. It provides a convenient way to interact with journalctl logs, including features like fontification, chunked loading for performance, and custom keyword highlighting.
 
+[[file:journalctl.v1.1.gif]]
+
 * Installation
   To install, place =journalctl-mode.el= in your load-path and add the following to your .emacs file:
 
