@@ -649,6 +649,12 @@ Move to next chunk when top of frame is reached."
 (defvar font-lock-defaults nil "Defaults for Font Lock mode specified by the major mode.")
 
 ;;;###autoload
+(defun journalctl ()
+  "Run journalctl and open transient menu."
+  (interactive)
+  (journalctl--run '("--lines=250"))
+  (journalctl-transient))
+
 (define-derived-mode journalctl-mode fundamental-mode "journalctl"
   "Major mode for viewing journalctl output."
   (setq mode-line-process
