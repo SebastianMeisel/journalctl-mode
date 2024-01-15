@@ -45,6 +45,7 @@
   - =journalctl-finished-keywords=: Keywords for finished processes.
   - =journalctl-follow-freq=: Frequency for updating in follow mode.
   - =journalctl-follow-lines=: Number of lines to show in follow mode.
+  - =journalctl-default-options:= List of default options for journalctl on start.
 
 * Key Bindings
   | Key   | Action                             |
