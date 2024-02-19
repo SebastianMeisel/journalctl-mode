@@ -25,6 +25,23 @@
   :ensure t)
   #+END_SRC
 
+* Define a global key
+
+It might be a good idea to define a global key to journalctl with:
+
+#+BEGIN_SRC emacs-lisp
+(global-set-key (kbd "C-c t") 'journalctl)
+#+END_SRC
+
+or with use-package:
+
+#+BEGIN_SRC emacs-lisp
+(use-package journalctl-mode
+  :ensure t
+  :bind (("C-c t" . journalctl)))
+#+END_SRC
+
+
 * Features
   - Fontification: Customize the appearance of log levels with faces.
   - Chunked Loading: Load journalctl output in manageable chunks for better performance.
